@@ -1,1 +1,1 @@
-curl -sSL https://raw.githubusercontent.com/zeerorg/k3s-in-docker/master/install-script.sh | sudo bash -
+wget -q -O - https://raw.githubusercontent.com/rancher/k3d/master/install.sh | bash

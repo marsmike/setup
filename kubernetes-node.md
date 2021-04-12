@@ -1,8 +1,6 @@
 # How to setup a kubernetes node on a Netcup VPS
 
-## Manual installation steps
-
-### Step 1. Init and Secure System
+## Step 1. Init and Secure System
 
 With preconfigured root user:
 
@@ -49,7 +47,19 @@ sudo ufw default deny incoming
 sudo ufw enable
 ```
 
-### Partitioning
+Copy id_rsa and id_rsa.pub from ~/.ssh to your development system and secure it.
+Then try to connect with the new key. If it works you can secure SSHD further:
+
+```
+sed -i "s/.*RSAAuthentication.*/RSAAuthentication yes/g" /etc/ssh/sshd_config
+sed -i "s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
+sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config
+sed -i "s/.*AuthorizedKeysFile.*/AuthorizedKeysFile\t\.ssh\/authorized_keys/g" /etc/ssh/sshd_config
+sed -i "s/.*PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config
+service sshd restart
+```
+
+## Step 2: Partitioning
 
 ```
 sudo fdisk /dev/sda

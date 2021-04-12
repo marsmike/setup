@@ -382,3 +382,140 @@ EOF
 kubectl apply -f hostpath-provisioner.yaml
 ```
 
+### NGINX Ingress
+Based on https://github.com/helm/charts/tree/master/stable/nginx-ingress
+
+```bash
+sudo ufw allow in 22
+sudo ufw allow in http
+sudo ufw allow in https
+```
+
+```bash
+curl https://raw.githubusercontent.com/helm/charts/master/stable/nginx-ingress/values.yaml -o nginx-ingress-values.yaml
+patch <<EOF
+--- nginx-ingress-values.yaml.sav       2020-04-20 09:08:30.152000000 +0200
++++ nginx-ingress-values.yaml   2020-04-20 09:11:40.840000000 +0200
+@@ -264,7 +264,7 @@ controller:
+     ## Set external traffic policy to: "Local" to preserve source IP on
+     ## providers supporting it
+     ## Ref: https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-typeloadbalancer
+-    externalTrafficPolicy: ""
++    externalTrafficPolicy: "Local"
+
+     # Must be either "None" or "ClientIP" if set. Kubernetes will default to "None".
+     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+@@ -567,6 +567,7 @@ imagePullSecrets: []
+ ##
+ tcp: {}
+ #  8080: "default/example-tcp-svc:9000"
++22: "gitlab/gitlab-gitlab-shell:22"
+
+ # UDP service key:value pairs
+EOF
+kubectl create namespace "kube-ingress"
+helm upgrade -i -n kube-ingress nginx-ingress stable/nginx-ingress -f nginx-ingress-values.yaml
+```
+
+```bash
+cat <<EOF > nginx-ingress-service-v6.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-ingress-controller-v6
+  namespace: kube-ingress
+spec:
+  externalTrafficPolicy: Local
+  ipFamily: IPv6
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: https
+  - name: git
+    port: 22
+    protocol: TCP
+    targetPort: 22
+  selector:
+    app: nginx-ingress
+    component: controller
+    release: nginx-ingress
+  sessionAffinity: None
+  type: LoadBalancer
+EOF
+kubectl apply -f nginx-ingress-service-v6.yaml
+```
+
+### CertManager
+
+Automatisches Ausstellen von Zertifikaten mittels LetsEncrypt
+Auf Basis von https://cert-manager.io/docs/tutorials/acme/ingress/
+Achtung: ein abweichender Namespace (z.B. kube-cert-manager) führt leider zu Problemen, hier müssten die CRDs modifiziert werden.
+
+```bash
+curl https://raw.githubusercontent.com/jetstack/cert-manager/master/deploy/charts/cert-manager/values.yaml -o cert-manager-values.yaml
+patch <<EOF
+--- cert-manager-values.yaml.sav        2020-04-21 15:20:14.080000000 +0200
++++ cert-manager-values.yaml    2020-04-21 15:22:26.104000000 +0200
+@@ -115,10 +115,10 @@ podLabels: {}
+
+ nodeSelector: {}
+
+-ingressShim: {}
+-  # defaultIssuerName: ""
+-  # defaultIssuerKind: ""
+-  # defaultIssuerGroup: ""
++ingressShim:
++  defaultIssuerName: "letsencrypt-prod"
++  defaultIssuerKind: "ClusterIssuer"
++  defaultIssuerGroup: "cert-manager.io"
+
+ prometheus:
+   enabled: true
+EOF
+```
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+# add crds
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.2/cert-manager.crds.yaml
+# install chart
+kubectl create namespace cert-manager
+helm upgrade -i -n cert-manager cert-manager jetstack/cert-manager -f cert-manager-values.yaml
+# add issuer
+cat <<EOF > cert-manager-issuer.yaml
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: xxx@xxx
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+```
+
+Verwendung: Ein Ingress muss folgende Annotation aufweisen um vom Reverse-Proxy geroutet zu werden und ein TLS-Zertifikat mit dem defaultIssuer zu erhalten:
+
+```yaml
+metadata:
+  name: kuard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    kubernetes.io/tls-acme: "true"
+```
+

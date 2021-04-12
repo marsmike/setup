@@ -519,3 +519,24 @@ metadata:
     kubernetes.io/tls-acme: "true"
 ```
 
+### Install Rancher 2.5.x
+
+```bash
+helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+kubectl create namespace cattle-system
+
+# Please modify hostname and email
+helm install rancher rancher-latest/rancher \
+  --namespace cattle-system \
+  --set hostname=rancher.my.org \
+  --set ingress.tls.source=letsEncrypt \
+  --set letsEncrypt.email=me@example.org
+  ```
+  
+  Wait for Rancher to be rolled out:
+  
+  ```bash
+  kubectl -n cattle-system rollout status deploy/rancher
+  ```
+  
+  

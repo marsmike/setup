@@ -1,4 +1,4 @@
-# How to setup a kubernetes node on any netcup VPS
+# How to setup a kubernetes node on a Netcup VPS
 
 ## Manual installation steps
 
@@ -66,7 +66,7 @@ sudo mount /dev/sda5 /srv
 sudo umount /mnt/tmp
 ```
 
-Enable Automatic Updates
+### Enable Automatic Updates
 
 ```
 sudo sed -i 's/\/\/Unattended-Upgrade::Automatic-Reboot/Unattended-Upgrade::Automatic-Reboot/g' /etc/apt/apt.conf.d/50unattended-upgrades
@@ -76,4 +76,46 @@ APT::Periodic::Download-Upgradeable-Packages "1";
 APT::Periodic::AutocleanInterval "7";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
+```
+
+### Create the Cluster
+
+Preparation:
+
+```
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv6.conf.all.forwarding = 1
+EOF
+sudo sysctl --system
+
+cat <<EOF | sudo tee /etc/default/kubelet
+KUBELET_EXTRA_ARGS=--feature-gates="IPv6DualStack=true"
+EOF
+
+cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+```
+
+```
+sudo systemctl enable docker
+sudo systemctl restart docker
+sudo ufw allow 6443
+sudo ufw allow out to 172.18.0.0/24
+sudo ufw allow out to 172.18.1.0/24
+sudo ufw allow out to fc00::/64
+sudo ufw allow out to fc01::/110
+sudo ufw allow in from 172.18.0.0/24
+sudo ufw allow in from 172.18.1.0/24
+sudo ufw allow in from fc00::/64
+sudo ufw allow in from fc01::/110
 ```

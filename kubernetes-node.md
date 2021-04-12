@@ -148,3 +148,41 @@ sudo snap install helm --classic
 helm repo add stable https://charts.helm.sh/stable
 helm repo update
 ```
+
+Bash Completion https://kubernetes.io/de/docs/tasks/tools/install-kubectl/
+
+```bash
+echo 'source <(kubectl completion bash)' >>~/.bashrc
+```
+
+Kubeadm Setup
+
+```bash
+cat <<EOF > kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta2
+featureGates:
+  IPv6DualStack: true
+kind: ClusterConfiguration
+kubernetesVersion: 1.21.0
+networking:
+  serviceSubnet: "172.18.1.0/24,fc01::/110"
+  podSubnet: "172.18.0.0/24,fc00::/64"
+  dnsDomain: "cluster.local"
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: ipvs
+EOF
+sudo kubeadm init --config kubeadm-config.yaml
+```
+
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) \$HOME/.kube/config
+
+kubectl taint nodes --all node-role.kubernetes.io/master-
+
+# edit /etc/kubernetes/manifests/kube-apiserver.yaml
+# add ServerSideApply=false to --feature-gate parameter
+```

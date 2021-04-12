@@ -1,13 +1,13 @@
 # How to setup a kubernetes node on a Netcup VPS
 
-## Step 1. Init and Secure System
+## Step 1: Init and Secure System
 
 With preconfigured root user:
 
 ```bash
 # passwd / set new root password
 hostnamectl set-hostname kubernetes-node
-# vim /etc/hosts
+# vim /etc/hosts, modify FQDN
 
 adduser mike
 #
@@ -17,6 +17,8 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 add-apt-repository \
    "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
 apt install docker-ce docker-ce-cli containerd.io
+adduser mike docker
+
 #
 # SSH verlegen um Platz für Gitlab Port zu schaffen:
 sudo sed -i -e 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
@@ -26,7 +28,7 @@ sudo systemctl restart ssh
 
 With new user `mike` via SSH:
 
-```
+```bash
 mkdir .ssh
 ssh-keygen
 # echo "ssh-rsa AAAAB...3w== ssh-jowi-privat-aes" >> ~/.ssh/authorized_keys
@@ -50,7 +52,7 @@ sudo ufw enable
 Copy id_rsa and id_rsa.pub from ~/.ssh to your development system and secure it.
 Then try to connect with the new key. If it works you can secure SSHD further:
 
-```
+```bash
 sed -i "s/.*RSAAuthentication.*/RSAAuthentication yes/g" /etc/ssh/sshd_config
 sed -i "s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
 sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config
@@ -59,9 +61,9 @@ sed -i "s/.*PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config
 service sshd restart
 ```
 
-## Step 2: Partitioning
+### Partitioning
 
-```
+```bash
 sudo fdisk /dev/sda
 # create partition 4 and 5 with 75G and rest
 sudo mke2fs /dev/sda4
@@ -78,7 +80,7 @@ sudo umount /mnt/tmp
 
 ### Enable Automatic Updates
 
-```
+```bash
 sudo sed -i 's/\/\/Unattended-Upgrade::Automatic-Reboot/Unattended-Upgrade::Automatic-Reboot/g' /etc/apt/apt.conf.d/50unattended-upgrades
 cat <<EOF | sudo tee -a /etc/apt/apt.conf.d/20auto-upgrades
 APT::Periodic::Update-Package-Lists "1";
@@ -88,11 +90,11 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 ```
 
-### Create the Cluster
+## Step 2: Create the Cluster
 
-Preparation:
+### Preparation
 
-```
+```bash
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
@@ -116,7 +118,7 @@ cat <<EOF | sudo tee /etc/docker/daemon.json
 EOF
 ```
 
-```
+```bash
 sudo systemctl enable docker
 sudo systemctl restart docker
 sudo ufw allow 6443
@@ -128,4 +130,21 @@ sudo ufw allow in from 172.18.0.0/24
 sudo ufw allow in from 172.18.1.0/24
 sudo ufw allow in from fc00::/64
 sudo ufw allow in from fc01::/110
+```
+
+### Install kubelet, kubeadm, kubectl and helm packages
+
+```bash
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get install -y apt-transport-https curl mc ipvsadm
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+
+sudo snap install helm --classic
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
 ```

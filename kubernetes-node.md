@@ -155,7 +155,7 @@ Bash Completion https://kubernetes.io/de/docs/tasks/tools/install-kubectl/
 echo 'source <(kubectl completion bash)' >>~/.bashrc
 ```
 
-Kubeadm Setup
+### Cluster Init with Kubeadm
 
 ```bash
 cat <<EOF > kubeadm-config.yaml
@@ -186,3 +186,199 @@ kubectl taint nodes --all node-role.kubernetes.io/master-
 # edit /etc/kubernetes/manifests/kube-apiserver.yaml
 # add ServerSideApply=false to --feature-gate parameter
 ```
+
+### Calico Networking Setup
+
+Please also see https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3705 
+
+```bash
+curl https://docs.projectcalico.org/manifests/calico.yaml -o calico.yaml
+cat <<"EOF" | patch
+--- calico.yaml.sav     2020-05-08 10:47:50.400000000 +0200
++++ calico.yaml 2020-05-08 10:49:34.700000000 +0200
+@@ -14,7 +14,7 @@ data:
+   # Configure the MTU to use for workload interfaces and the
+   # tunnels.  For IPIP, set to your network MTU - 20; for VXLAN
+   # set to your network MTU - 50.
+-  veth_mtu: "1440"
++  veth_mtu: "1500"
+
+   # The CNI network configuration to install on each node.  The special
+   # values in this config will be automatically populated.
+@@ -30,8 +30,13 @@ data:
+           "nodename": "__KUBERNETES_NODE_NAME__",
+           "mtu": __CNI_MTU__,
+           "ipam": {
++              "assign_ipv4": "true",
++              "assign_ipv6": "true",
+               "type": "calico-ipam"
+           },
++          "container_settings": {
++            "allow_ip_forwarding": true
++          },
+           "policy": {
+               "type": "k8s"
+           },
+@@ -671,6 +676,8 @@ spec:
+             # no effect. This should fall within `--cluster-cidr`.
+             # - name: CALICO_IPV4POOL_CIDR
+             #   value: "192.168.0.0/16"
++            - name: CALICO_IPV4POOL_CIDR
++              value: "172.18.0.0/24"
+             # Disable file logging so `kubectl logs` works.
+             - name: CALICO_DISABLE_FILE_LOGGING
+               value: "true"
+@@ -685,6 +692,14 @@ spec:
+               value: "info"
+             - name: FELIX_HEALTHENABLED
+               value: "true"
++            - name: IP6
++              value: "autodetect"
++            - name: CALICO_IPV6POOL_CIDR
++              value: "fc00::/64"
++            - name: FELIX_IPV6SUPPORT
++              value: "true"
++            - name: CALICO_IPV6POOL_NAT_OUTGOING
++              value: "true"
+           securityContext:
+             privileged: true
+           resources:
+EOF
+kubectl apply -f calico.yaml
+```
+
+### Loadbalancer MetallLB
+
+```bash
+kubectl create namespace kube-lb
+cat <<EOF > metallb-values.yaml
+configInline:
+  peers:
+  address-pools:
+  - name: default4
+    protocol: layer2
+    addresses:
+    - 152.89.xxx.xxx/32
+    - 2a03:4000:39:xxxx:xxxx:xxxx:xxxx:xxxx/128
+controller:
+  image:
+    tag: v0.9.3
+speaker:
+  image:
+    tag: v0.9.3
+EOF
+helm upgrade -i metallb -n kube-lb stable/metallb -f metallb-values.yaml
+```
+
+### HostPath Provider
+
+```bash
+sudo mkdir -p /srv/k8s-storage
+cat <<EOF > hostpath-provisioner.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hostpath-provisioner
+  labels:
+    k8s-app: hostpath-provisioner
+  namespace: kube-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      k8s-app: hostpath-provisioner
+  template:
+    metadata:
+      labels:
+        k8s-app: hostpath-provisioner
+    spec:
+      serviceAccountName: k8s-hostpath
+      containers:
+        - name: hostpath-provisioner
+          image: cdkbot/hostpath-provisioner-amd64:1.0.0
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PV_DIR
+              value: /srv/k8s-storage
+            #- name: PV_RECLAIM_POLICY
+            #  value: Retain
+          volumeMounts:
+            - name: pv-volume
+              mountPath: /srv/k8s-storage
+      volumes:
+        - name: pv-volume
+          hostPath:
+            path: /srv/k8s-storage
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: k8s-hostpath
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: microk8s.io/hostpath
+#reclaimPolicy: Retain //is ignored (see above)
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-hostpath
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-hostpath
+rules:
+- apiGroups: [""]
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - list
+  - get
+  - watch
+  - update
+- apiGroups: [""]
+  resources:
+  - persistentvolumes
+  verbs:
+  - list
+  - get
+  - update
+  - watch
+  - create
+  - delete
+- apiGroups: [""]
+  resources:
+    - events
+  verbs:
+    - create
+    - list
+    - patch
+- apiGroups: ["storage.k8s.io"]
+  resources:
+    - storageclasses
+  verbs:
+    - list
+    - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-hostpath
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-hostpath
+subjects:
+  - kind: ServiceAccount
+    name: k8s-hostpath
+    namespace: kube-system
+EOF
+kubectl apply -f hostpath-provisioner.yaml
+```
+

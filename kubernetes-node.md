@@ -10,20 +10,12 @@ hostnamectl set-hostname kubernetes-node
 # vim /etc/hosts, modify FQDN
 
 adduser mike
-#
 adduser mike sudo
-# nur bei 20.04
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 add-apt-repository \
    "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
 apt install -y docker-ce docker-ce-cli containerd.io
 adduser mike docker
-
-#
-# SSH verlegen um Platz für Gitlab Port zu schaffen:
-sudo sed -i -e 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
-
-sudo systemctl restart ssh
 ```
 
 With new user `mike` via SSH:
@@ -34,9 +26,8 @@ ssh-keygen
 # echo "ssh-rsa AAAAB...3w== ssh-jowi-privat-aes" >> ~/.ssh/authorized_keys
 cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
 
-sudo passwd -l root
 sudo ufw allow OpenSSH
-sudo ufw allow 2222
+sudo ufw allow 2020
 sudo ufw allow out http
 sudo ufw allow out https
 sudo ufw allow out 22
@@ -53,12 +44,13 @@ Copy id_rsa and id_rsa.pub from ~/.ssh to your development system and secure it.
 Then try to connect with the new key. If it works you can secure SSHD further:
 
 ```bash
-sed -i "s/.*RSAAuthentication.*/RSAAuthentication yes/g" /etc/ssh/sshd_config
-sed -i "s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
-sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config
-sed -i "s/.*AuthorizedKeysFile.*/AuthorizedKeysFile\t\.ssh\/authorized_keys/g" /etc/ssh/sshd_config
-sed -i "s/.*PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config
-service sshd restart
+sudo sed -i "s/.*RSAAuthentication.*/RSAAuthentication yes/g" /etc/ssh/sshd_config
+sudo sed -i "s/.*PubkeyAuthentication.*/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
+sudo sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config
+sudo sed -i "s/.*AuthorizedKeysFile.*/AuthorizedKeysFile\t\.ssh\/authorized_keys/g" /etc/ssh/sshd_config
+sudo sed -i "s/.*PermitRootLogin.*/PermitRootLogin no/g" /etc/ssh/sshd_config
+sudo sed -i -e 's/#Port 22/Port 2020/' /etc/ssh/sshd_config
+sudo service sshd restart
 ```
 
 ### Partitioning

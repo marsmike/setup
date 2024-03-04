@@ -1,4 +1,8 @@
 #!/bin/bash
 
 sudo apt update
-sudo apt -y install git curl build-essential docker-compose mc htop btop vim neovim 
+sudo apt -y install git curl build-essential docker docker-compose htop btop vim wget python3
+
+# Handle with care .. only if AppImage is complaining about missing fuse support
+# => Installs too much packages
+# sudo apt install fuse libfuse2 

@@ -47,7 +47,12 @@ fi
 ZSH_BIN="$(which zsh)"
 if [ "${SHELL}" != "${ZSH_BIN}" ]; then
   echo "Setting zsh as default shell..."
-  sudo usermod -s "${ZSH_BIN}" "${USER}"
+  if sudo -n usermod -s "${ZSH_BIN}" "${USER}" 2>/dev/null; then
+    echo "Default shell changed to zsh."
+  else
+    echo "NOTE: Could not set default shell automatically (needs sudo)."
+    echo "Run manually: chsh -s ${ZSH_BIN}"
+  fi
 fi
 
 echo ""

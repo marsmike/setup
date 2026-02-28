@@ -8,7 +8,7 @@ ZSH_DIR="${HOME}/.oh-my-zsh"
 CUSTOM="${ZSH_DIR}/custom"
 
 # --- oh-my-zsh ---
-if [ -f "${ZSH_DIR}/oh-my-zsh.sh" ]; then
+if [ -d "${ZSH_DIR}" ]; then
   echo "oh-my-zsh already installed, skipping."
 else
   echo "Installing oh-my-zsh..."

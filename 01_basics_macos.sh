@@ -32,6 +32,8 @@ export NVM_DIR="$HOME/.nvm"
 nvm install --lts
 nvm alias default 'lts/*'
 
+brew install --cask ghostty
+
 echo ""
 echo "Note: Docker Desktop must be installed manually from https://www.docker.com/products/docker-desktop/"
 echo "Next: 02_dotfiles.sh then 03_shell.sh"

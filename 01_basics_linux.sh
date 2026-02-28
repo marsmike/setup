@@ -63,4 +63,14 @@ curl -fsSL "https://github.com/arimxyer/models/releases/latest/download/models-x
 sudo install "$(find "$TMP" -name models -type f)" /usr/local/bin/models
 rm -rf "$TMP"
 
+# ghostty (GPU terminal — desktop only, skip on headless servers)
+# Official Linux distribution is via Flatpak on Flathub
+if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+  sudo apt install -y flatpak
+  flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  flatpak install -y flathub org.ghostty.ghostty
+else
+  echo "Skipping Ghostty (no display detected — headless server)"
+fi
+
 echo "Basics installed. Next: 02_dotfiles.sh then 03_shell.sh"

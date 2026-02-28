@@ -2,7 +2,23 @@
 # Phase 1 — Core (every machine)
 # Installs chezmoi and applies marsmike dotfiles.
 # Also bootstraps tmux plugin manager (tpm).
+#
+# GitHub auth: set GH_TOKEN to skip interactive login, e.g.:
+#   ssh user@host "GH_TOKEN='$(gh auth token)' bash -s" < 02_dotfiles.sh
 set -euo pipefail
+
+# --- GitHub CLI auth ---
+# gh is installed by 01_basics_*.sh; find it wherever it landed.
+GH_BIN="$(command -v gh 2>/dev/null || echo "${HOME}/.local/bin/gh")"
+if "$GH_BIN" auth status &>/dev/null; then
+  echo "gh already authenticated, skipping."
+elif [ -n "${GH_TOKEN:-}" ]; then
+  echo "Authenticating gh via GH_TOKEN..."
+  echo "$GH_TOKEN" | "$GH_BIN" auth login --with-token
+else
+  echo "Logging into GitHub (interactive)..."
+  "$GH_BIN" auth login --hostname github.com --git-protocol https
+fi
 
 echo "Installing chezmoi and applying dotfiles from marsmike/dotfiles..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply marsmike

@@ -30,7 +30,7 @@ else
 fi
 
 echo "Installing chezmoi and applying dotfiles from marsmike/dotfiles..."
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply marsmike
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force marsmike
 
 echo ""
 echo "Loading Tmux Plugin Manager (tpm)..."

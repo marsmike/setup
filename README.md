@@ -9,8 +9,14 @@ Machine setup scripts for Linux servers and macOS.
 ### New Linux Server (as root)
 ```bash
 bash 00_server_adduser.sh   # create mike user
-bash 00_server_sshd.sh      # harden sshd (key-only, no root)
+bash 00_server_sudoers.sh   # passwordless sudo for mike
+bash 00_server_sshd.sh      # harden sshd (key-only, no root) — run AFTER key is in place
 # then SSH in as mike and continue below
+```
+
+### From your local machine (before/after server setup)
+```bash
+bash 00_local_sshkey.sh mike@<host>   # generate key + ssh-copy-id to server
 ```
 
 ### Linux Dev Machine / Server (as mike)
@@ -35,9 +41,11 @@ exec zsh && p10k configure
 
 | Script | What it does | Linux | macOS |
 |--------|-------------|-------|-------|
-| **Phase 0 — Server only (run as root)** | | | |
-| `00_server_adduser.sh` | Create `mike` user, add to sudo + docker | ✓ | — |
-| `00_server_sshd.sh` | Harden sshd: key-only auth, no root login | ✓ | — |
+| **Phase 0 — Server setup** | | | |
+| `00_local_sshkey.sh` | Generate ED25519 key pair + `ssh-copy-id` to server | — | ✓ (local) |
+| `00_server_adduser.sh` | Create `mike` user, add to sudo + docker *(as root)* | ✓ | — |
+| `00_server_sudoers.sh` | Passwordless sudo for user *(as root)* | ✓ | — |
+| `00_server_sshd.sh` | Harden sshd: key-only auth, no root login *(as root)* | ✓ | — |
 | **Phase 1 — Core (run first, every machine)** | | | |
 | `01_basics_linux.sh` | apt packages: git, zsh, eza, ripgrep, fd, node… | ✓ | — |
 | `01_basics_macos.sh` | Homebrew + same baseline via brew | — | ✓ |

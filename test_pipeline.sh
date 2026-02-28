@@ -9,6 +9,7 @@
 #   bash test_pipeline.sh                    # auto-detect backend
 #   bash test_pipeline.sh --backend docker   # force Docker
 #   bash test_pipeline.sh --backend quickemu # force quickemu
+#   bash test_pipeline.sh --with-dotfiles    # also run 02_dotfiles.sh (needs .env)
 #   bash test_pipeline.sh --keep             # leave container/VM running after tests
 #   bash test_pipeline.sh --clean            # destroy previous environment first
 set -euo pipefail
@@ -25,7 +26,13 @@ VM_SSH_USER="ubuntu"
 BACKEND=""
 KEEP=false
 CLEAN=false
+WITH_DOTFILES=false
 FAILURES=0
+
+# Load .env so we can forward credentials into the container/VM
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+  set -o allexport; source "${SCRIPT_DIR}/.env"; set +o allexport
+fi
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
 pass()   { echo -e "  ${GREEN}✓${NC} $1"; }
@@ -41,6 +48,7 @@ for arg in "$@"; do
     --backend=quickemu) BACKEND=quickemu ;;
     --keep) KEEP=true ;;
     --clean) CLEAN=true ;;
+    --with-dotfiles) WITH_DOTFILES=true ;;
   esac
 done
 
@@ -106,19 +114,22 @@ if [ "$BACKEND" = "docker" ]; then
   for f in "${SCRIPT_DIR}"/*.sh; do
     docker cp "$f" "${CONTAINER_NAME}:/home/ubuntu/$(basename "$f")" 2>/dev/null
   done
+  if [ -f "${SCRIPT_DIR}/.env" ]; then
+    docker cp "${SCRIPT_DIR}/.env" "${CONTAINER_NAME}:/home/ubuntu/.env"
+  fi
   docker exec "${CONTAINER_NAME}" chown -R ubuntu:ubuntu /home/ubuntu/
   pass "Scripts uploaded"
 
-  if [ -f "${SCRIPT_DIR}/.env" ]; then
-    docker cp "${SCRIPT_DIR}/.env" "${CONTAINER_NAME}:/home/ubuntu/.env"
-    pass ".env uploaded"
+  if $WITH_DOTFILES; then
+    [ -n "${GH_TOKEN:-}" ] || { fail "--with-dotfiles requires GH_TOKEN in .env"; exit 1; }
     HAS_ENV=true
   else
-    info "No .env — 02_dotfiles.sh will be skipped"
+    info "Skipping 02_dotfiles.sh (pass --with-dotfiles to include it)"
     HAS_ENV=false
   fi
 
   # Run a script inside the container as the ubuntu user
+  # Key vars are forwarded explicitly so they're available without sourcing .env
   run_phase() {
     local script="$1" label="$2"
     header "Running ${script}"
@@ -128,6 +139,9 @@ if [ "$BACKEND" = "docker" ]; then
         -e HOME=/home/ubuntu \
         -e USER=ubuntu \
         -e DEBIAN_FRONTEND=noninteractive \
+        -e GH_TOKEN="${GH_TOKEN:-}" \
+        -e DOTFILES_REPO="${DOTFILES_REPO:-}" \
+        -e SETUP_USER="${SETUP_USER:-}" \
         "${CONTAINER_NAME}" \
         bash "/home/ubuntu/${script}" 2>&1 | tee "${WORK_DIR}/logs/${script}.log"; then
       pass "${label}"
@@ -271,9 +285,15 @@ USERDATA
 
   if [ -f "${SCRIPT_DIR}/.env" ]; then
     scp $SSH_OPTS "${SCRIPT_DIR}/.env" "${VM_SSH_USER}@localhost:/home/${VM_SSH_USER}/.env" >/dev/null
-    pass ".env uploaded"; HAS_ENV=true
+    pass ".env uploaded"
+  fi
+
+  if $WITH_DOTFILES; then
+    [ -n "${GH_TOKEN:-}" ] || { fail "--with-dotfiles requires GH_TOKEN in .env"; exit 1; }
+    HAS_ENV=true
   else
-    info "No .env — 02_dotfiles.sh will be skipped"; HAS_ENV=false
+    info "Skipping 02_dotfiles.sh (pass --with-dotfiles to include it)"
+    HAS_ENV=false
   fi
 
   run_phase() {
@@ -308,7 +328,7 @@ fi
 
 # ── Run pipeline ──────────────────────────────────────────────────────────────
 run_phase "01_basics_linux.sh" "Phase 1: basics"
-${HAS_ENV} && run_phase "02_dotfiles.sh" "Phase 1: dotfiles"
+$WITH_DOTFILES && run_phase "02_dotfiles.sh" "Phase 1: dotfiles"
 run_phase "03_shell.sh" "Phase 1: shell (oh-my-zsh + powerlevel10k)"
 
 # ── Verify ────────────────────────────────────────────────────────────────────

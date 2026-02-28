@@ -107,6 +107,9 @@ exec zsh && p10k configure
 | **Utilities** | | | |
 | `yabs.sh` | Server benchmark (Yet Another Bench Script) | ✓ | — |
 | `mx-keys-fix.sh` | Logitech MX Keys Fn-key fix (Linux desktop) | ✓ | — |
+| `quickemu_install.sh` | quickemu + quickget — run lightweight VMs | ✓ | — |
+| `quickgui_install.sh` | quickgui — GUI front-end for quickemu (optional) | ✓ | — |
+| `test_pipeline.sh` | Spin up a fresh Ubuntu 24.04 VM and test the Linux pipeline | ✓ | — |
 
 ---
 

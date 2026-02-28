@@ -3,9 +3,18 @@
 # Installs chezmoi and applies marsmike dotfiles.
 # Also bootstraps tmux plugin manager (tpm).
 #
-# GitHub auth: set GH_TOKEN to skip interactive login, e.g.:
-#   ssh user@host "GH_TOKEN='$(gh auth token)' bash -s" < 02_dotfiles.sh
+# GitHub auth: place a GH_TOKEN in .env next to this script (see .env.example).
 set -euo pipefail
+
+# --- load .env if present (tokens, secrets) ---
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+  echo "Loading ${SCRIPT_DIR}/.env ..."
+  set -o allexport
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/.env"
+  set +o allexport
+fi
 
 # --- GitHub CLI auth ---
 # gh is installed by 01_basics_*.sh; find it wherever it landed.

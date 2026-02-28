@@ -14,6 +14,10 @@ sudo apt -y install \
   git-delta direnv hyperfine lnav \
   libfuse2
 
+# On Ubuntu, bat is installed as 'batcat' — create a user-level symlink
+mkdir -p ~/.local/bin
+[ -f /usr/bin/batcat ] && ln -sf /usr/bin/batcat ~/.local/bin/bat
+
 # Install nvm and latest Node LTS
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 export NVM_DIR="$HOME/.nvm"

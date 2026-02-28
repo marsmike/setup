@@ -23,5 +23,11 @@ echo "dive v${DIVE_VERSION} installed."
 
 # --- lazydocker ---
 echo "Installing lazydocker..."
-curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | sudo bash
-echo "lazydocker installed."
+LAZYDOCKER_VER=$(curl -fsSL "https://api.github.com/repos/jesseduffield/lazydocker/releases/latest" \
+  | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+TMP=$(mktemp -d)
+curl -fsSL "https://github.com/jesseduffield/lazydocker/releases/download/v${LAZYDOCKER_VER}/lazydocker_${LAZYDOCKER_VER}_Linux_x86_64.tar.gz" \
+  | tar -xzf - -C "$TMP"
+sudo install "$TMP/lazydocker" /usr/local/bin/lazydocker
+rm -rf "$TMP"
+echo "lazydocker v${LAZYDOCKER_VER} installed."

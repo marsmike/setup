@@ -6,6 +6,15 @@ set -euo pipefail
 
 curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 
+# Ensure ~/.atuin/bin is in PATH (installer puts binary there)
+ZSHRC="${HOME}/.zshrc"
+BASHRC="${HOME}/.bashrc"
+for RC in "${ZSHRC}" "${BASHRC}"; do
+  if [ -f "${RC}" ] && ! grep -q '\.atuin/bin' "${RC}"; then
+    echo 'export PATH="$HOME/.atuin/bin:$PATH"' >> "${RC}"
+  fi
+done
+
 # --- patch .zshrc ---
 ZSHRC="${HOME}/.zshrc"
 if [ -f "${ZSHRC}" ]; then

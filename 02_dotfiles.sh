@@ -37,6 +37,17 @@ fi
 echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}/dotfiles..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force "${DOTFILES_REPO}"
 
+# Ensure nvm init survives in .zshrc after chezmoi applies dotfiles
+if [ -f "${HOME}/.zshrc" ] && ! grep -q 'NVM_DIR' "${HOME}/.zshrc"; then
+  cat >> "${HOME}/.zshrc" << 'EOF'
+
+# nvm (Node Version Manager)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+EOF
+fi
+
 echo ""
 echo "Loading Tmux Plugin Manager (tpm)..."
 if [ ! -d ~/.tmux/plugins/tpm ]; then

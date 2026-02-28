@@ -47,7 +47,7 @@ fi
 ZSH_BIN="$(which zsh)"
 if [ "${SHELL}" != "${ZSH_BIN}" ]; then
   echo "Setting zsh as default shell..."
-  chsh -s "${ZSH_BIN}"
+  sudo usermod -s "${ZSH_BIN}" "${USER}"
 fi
 
 echo ""

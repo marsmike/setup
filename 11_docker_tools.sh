@@ -1,0 +1,27 @@
+#!/bin/bash
+# Phase 2 — Dev tools
+# Installs ctop, dive, and lazydocker.
+set -euo pipefail
+
+# --- ctop (latest from GitHub) ---
+echo "Installing ctop..."
+CTOP_VERSION=$(curl -sL "https://api.github.com/repos/bcicen/ctop/releases/latest" \
+  | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+sudo curl -Lo /usr/local/bin/ctop \
+  "https://github.com/bcicen/ctop/releases/download/v${CTOP_VERSION}/ctop-${CTOP_VERSION}-linux-amd64"
+sudo chmod +x /usr/local/bin/ctop
+echo "ctop v${CTOP_VERSION} installed."
+
+# --- dive ---
+echo "Installing dive..."
+DIVE_VERSION=$(curl -sL "https://api.github.com/repos/wagoodman/dive/releases/latest" \
+  | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+curl -OL "https://github.com/wagoodman/dive/releases/download/v${DIVE_VERSION}/dive_${DIVE_VERSION}_linux_amd64.deb"
+sudo dpkg -i "./dive_${DIVE_VERSION}_linux_amd64.deb"
+rm "./dive_${DIVE_VERSION}_linux_amd64.deb"
+echo "dive v${DIVE_VERSION} installed."
+
+# --- lazydocker ---
+echo "Installing lazydocker..."
+curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | sudo bash
+echo "lazydocker installed."

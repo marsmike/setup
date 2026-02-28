@@ -19,7 +19,6 @@ export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
 \. "$NVM_DIR/nvm.sh"
 nvm install --lts
-nvm use --lts
 nvm alias default 'lts/*'
 
 echo "Basics installed. Next: 02_dotfiles.sh then 03_shell.sh"

@@ -22,7 +22,6 @@ export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
 \. "$(brew --prefix nvm)/nvm.sh"
 nvm install --lts
-nvm use --lts
 nvm alias default 'lts/*'
 
 echo ""

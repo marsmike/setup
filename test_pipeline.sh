@@ -88,12 +88,15 @@ if [ "$BACKEND" = "docker" ]; then
     docker exec "${CONTAINER_NAME}" bash -c "
       export DEBIAN_FRONTEND=noninteractive
       apt-get update -qq
-      apt-get install -y --no-install-recommends sudo curl ca-certificates git tzdata locales 2>/dev/null
-      useradd -m -s /bin/bash ubuntu
+      apt-get install -y --no-install-recommends \
+        sudo curl ca-certificates git tzdata locales \
+        software-properties-common 2>/dev/null
+      useradd -m -s /bin/bash ubuntu 2>/dev/null || true
       echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
       chmod 440 /etc/sudoers.d/ubuntu
+      mkdir -p /home/ubuntu
       touch /home/ubuntu/.zsh_history
-      chown ubuntu:ubuntu /home/ubuntu/.zsh_history
+      chown -R ubuntu:ubuntu /home/ubuntu
     "
   fi
   pass "Container ready"

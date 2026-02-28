@@ -7,4 +7,4 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 chmod u+x kubectl
 sudo mv kubectl /usr/local/bin/kubectl
 
-echo "kubectl $(kubectl version --client --short 2>/dev/null || kubectl version --client) installed."
+echo "kubectl $(kubectl version --client) installed."

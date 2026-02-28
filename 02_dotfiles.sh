@@ -2,7 +2,7 @@
 # Phase 1 — Core (every machine)
 # Installs chezmoi and applies marsmike dotfiles.
 # Also bootstraps tmux plugin manager (tpm).
-set -e
+set -euo pipefail
 
 echo "Installing chezmoi and applying dotfiles from marsmike/dotfiles..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply marsmike

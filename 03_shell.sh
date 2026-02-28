@@ -58,10 +58,13 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${SYNTAX_DIR}"
 fi
 
-# --- remove mcfly from .zshrc (replaced by atuin) ---
-if [ -f "${HOME}/.zshrc" ] && grep -q 'mcfly init' "${HOME}/.zshrc"; then
-  echo "Removing mcfly from .zshrc (use 20_atuin.sh as replacement)..."
-  sed -i 's|^eval "\$(mcfly init zsh)".*|# eval "$(mcfly init zsh)"  # removed — run 20_atuin.sh|' "${HOME}/.zshrc"
+# --- guard mcfly in .zshrc (it's optional — only run if installed) ---
+# The dotfiles .zshrc has a bare eval that errors when mcfly isn't installed.
+# Replace it with a guarded version so it silently skips if not present.
+if [ -f "${HOME}/.zshrc" ] && grep -q '^eval "\$(mcfly init zsh)"' "${HOME}/.zshrc"; then
+  echo "Guarding mcfly in .zshrc (skips silently if mcfly not installed)..."
+  sed -i.bak 's|^eval "\$(mcfly init zsh)"|command -v mcfly \&>/dev/null \&\& eval "$(mcfly init zsh)"|' \
+    "${HOME}/.zshrc" && rm -f "${HOME}/.zshrc.bak"
 fi
 
 # --- set zsh as default shell ---

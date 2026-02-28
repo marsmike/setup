@@ -58,6 +58,12 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${SYNTAX_DIR}"
 fi
 
+# --- remove mcfly from .zshrc (replaced by atuin) ---
+if [ -f "${HOME}/.zshrc" ] && grep -q 'mcfly init' "${HOME}/.zshrc"; then
+  echo "Removing mcfly from .zshrc (use 20_atuin.sh as replacement)..."
+  sed -i 's|^eval "\$(mcfly init zsh)".*|# eval "$(mcfly init zsh)"  # removed — run 20_atuin.sh|' "${HOME}/.zshrc"
+fi
+
 # --- set zsh as default shell ---
 ZSH_BIN="$(which zsh)"
 if [ "${SHELL}" != "${ZSH_BIN}" ]; then

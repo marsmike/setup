@@ -58,6 +58,9 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${SYNTAX_DIR}"
 fi
 
+# --- ensure history file exists (mcfly/atuin error if it's missing) ---
+touch "${HOME}/.zsh_history"
+
 # --- guard mcfly in .zshrc (it's optional — only run if installed) ---
 # The dotfiles .zshrc has a bare eval that errors when mcfly isn't installed.
 # Replace it with a guarded version so it silently skips if not present.

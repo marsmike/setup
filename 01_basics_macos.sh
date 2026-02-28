@@ -14,7 +14,16 @@ brew install \
   zoxide fzf bat jq tmux zsh btop ncdu tldr httpie rsync \
   eza ripgrep fd \
   lazygit \
-  node
+  nvm
+
+# Install latest Node LTS via nvm
+mkdir -p ~/.nvm
+export NVM_DIR="$HOME/.nvm"
+# shellcheck source=/dev/null
+\. "$(brew --prefix nvm)/nvm.sh"
+nvm install --lts
+nvm use --lts
+nvm alias default 'lts/*'
 
 echo ""
 echo "Note: Docker Desktop must be installed manually from https://www.docker.com/products/docker-desktop/"

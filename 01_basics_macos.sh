@@ -17,7 +17,12 @@ brew install \
   git-delta direnv hyperfine lnav watchexec yq glow \
   jless csvlens viddy \
   arimxyer/tap/models \
+  mactop gromgit/brewtils/taproom \
+  timg \
   nvm
+
+brew tap AlexsJones/llmfit
+brew install llmfit
 
 # Install latest Node LTS via nvm
 mkdir -p ~/.nvm

@@ -10,7 +10,7 @@ sudo apt -y install \
   docker-compose btop htop gh vim wget \
   python3 python3-pip python3-venv \
   zoxide ncdu tldr httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
-  eza ripgrep fd-find \
+  eza ripgrep fd-find ranger \
   git-delta direnv hyperfine lnav \
   libfuse2
 

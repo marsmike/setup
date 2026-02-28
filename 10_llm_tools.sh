@@ -15,6 +15,7 @@ fi
 # ttok         — token counting before API calls
 # strip-tags   — strip HTML to clean text for LLM input
 # aider-chat   — AI pair programmer, git-native
+# (llmfit and timg are installed via brew in 01_basics_macos.sh)
 for tool in llm files-to-prompt ttok strip-tags aider-chat; do
   echo "Installing $tool..."
   uv tool install "$tool"

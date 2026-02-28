@@ -92,7 +92,9 @@ exec zsh && p10k configure
 | `10_kubectl.sh` | kubectl (latest stable) | ✓ | — |
 | `10_helm.sh` | Helm 3 (official installer) | ✓ | — |
 | `10_k3d.sh` | k3d — k3s in Docker | ✓ | — |
-| `10_ai_tools.sh` | Claude Code, Gemini CLI, GH Copilot CLI, Pi | ✓ | ✓ |
+| `10_claude.sh` | Claude Code CLI (native installer) | ✓ | ✓ |
+| `10_ai_tools.sh` | Gemini CLI, GH Copilot CLI, Pi | ✓ | ✓ |
+| `10_llm_tools.sh` | llm, files-to-prompt, ttok, strip-tags, aider | ✓ | ✓ |
 | `11_docker_tools.sh` | ctop, dive, lazydocker | ✓ | — |
 | **Phase 3 — Optional / Specialized** | | | |
 | `20_atuin.sh` | atuin shell history (replaces mcfly) | ✓ | ✓ |
@@ -183,10 +185,17 @@ Run this first on any Linux machine.
 bash 01_basics_linux.sh
 ```
 
-Installs: `git`, `curl`, `build-essential`, `docker-compose`, `btop`, `htop`,
-`gh`, `vim`, `wget`, `python3` (+pip, +venv), `zoxide`, `ncdu`, `tldr`,
-`httpie`, `powertop`, `fzf`, `bat`, `ack`, `dnsutils`, `rsync`, `jq`, `tmux`,
-`zsh`, `eza`, `ripgrep`, `fd-find`, `nodejs`, `npm`, `libfuse2`
+| Group | Tools |
+|-------|-------|
+| Core | `git` `gh` `vim` `wget` `curl` `build-essential` |
+| Shell | `zsh` `tmux` `fzf` `zoxide` |
+| Files | `eza` `bat` `fd-find` `ripgrep` `ranger` |
+| Monitor | `btop` `htop` `ncdu` `powertop` `hyperfine` |
+| Data | `jq` `yq` `glow` `lnav` `csvlens` `ack` `tldr` |
+| Dev workflow | `git-delta` `direnv` `watchexec` `python3` `docker-compose` |
+| Network | `httpie` `rsync` `dnsutils` |
+| AI / LLM | `models` |
+| Runtime | Node.js LTS (via nvm) `libfuse2` |
 
 ---
 
@@ -198,9 +207,18 @@ Installs Homebrew if not present, then installs an equivalent set of tools.
 bash 01_basics_macos.sh
 ```
 
-Installs via brew: `git`, `gh`, `vim`, `wget`, `zoxide`, `fzf`, `bat`, `jq`,
-`tmux`, `zsh`, `btop`, `ncdu`, `tldr`, `httpie`, `rsync`, `eza`, `ripgrep`,
-`fd`, `lazygit`, `node`
+| Group | Tools |
+|-------|-------|
+| Core | `git` `gh` `vim` `wget` |
+| Shell | `zsh` `tmux` `fzf` `zoxide` |
+| Files | `eza` `bat` `fd` `ripgrep` `lazygit` |
+| Monitor | `btop` `ncdu` `hyperfine` `mactop` `viddy` |
+| Data | `jq` `yq` `glow` `lnav` `csvlens` `jless` `tldr` |
+| Dev workflow | `git-delta` `direnv` `watchexec` |
+| Network | `httpie` `rsync` |
+| AI / LLM | `models` `llmfit` |
+| Terminal extras | `taproom` `timg` |
+| Runtime | Node.js LTS (via nvm) |
 
 > **Note:** Docker Desktop must be installed manually from docker.com.
 
@@ -303,10 +321,22 @@ bash 10_k3d.sh
 
 ---
 
+### `10_claude.sh` — Claude Code
+
+Installs [Claude Code](https://claude.ai/code) using the native installer.
+
+```bash
+bash 10_claude.sh
+```
+
+After installing, run `claude` to get started.
+
+---
+
 ### `10_ai_tools.sh` — AI coding assistants
 
-Installs four AI coding tools. Requires `nodejs` + `npm` and `gh`
-(both included in the Phase 1 basics scripts).
+Installs Gemini CLI, GitHub Copilot CLI, and Pi. Requires `nodejs` + `npm`
+and `gh` (both included in the Phase 1 basics scripts).
 
 ```bash
 bash 10_ai_tools.sh
@@ -314,10 +344,30 @@ bash 10_ai_tools.sh
 
 | Tool | Command | Source |
 |------|---------|--------|
-| Claude Code | `claude` | Anthropic — `@anthropic-ai/claude-code` |
 | Gemini CLI | `gemini` | Google — `@google/gemini-cli` |
 | GitHub Copilot CLI | `gh copilot` | `gh extension install github/gh-copilot` |
 | Pi coding agent | `pi` | badlogic — `@mariozechner/pi-coding-agent` |
+
+---
+
+### `10_llm_tools.sh` — LLM CLI utilities
+
+Installs Simon Willison's LLM stack and aider via `uv tool install`.
+Bootstraps `uv` automatically if not present.
+
+```bash
+bash 10_llm_tools.sh
+```
+
+| Tool | Command | What it does |
+|------|---------|-------------|
+| [llm](https://llm.datasette.io) | `llm` | Run prompts against any model; log history |
+| [files-to-prompt](https://github.com/simonw/files-to-prompt) | `files-to-prompt` | Concat a codebase into a single prompt |
+| [ttok](https://github.com/simonw/ttok) | `ttok` | Count tokens before making API calls |
+| [strip-tags](https://github.com/simonw/strip-tags) | `strip-tags` | Strip HTML to clean text for LLM input |
+| [aider](https://aider.chat) | `aider` | AI pair programmer, git-native |
+
+> `llmfit` and `timg` are installed via brew in `01_basics_macos.sh`.
 
 ---
 

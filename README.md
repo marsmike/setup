@@ -23,14 +23,14 @@ cp .env.example .env
 Run as **root** on the fresh server:
 
 ```bash
-bash 00_server_adduser.sh   # create mike user + add to sudo & docker groups
-bash 00_server_sudoers.sh   # passwordless sudo for mike
+bash 00_server_adduser.sh   # create user (SETUP_USER) + add to sudo & docker groups
+bash 00_server_sudoers.sh   # passwordless sudo for user
 ```
 
 From your **local machine** — copy your SSH key over while password auth is still on:
 
 ```bash
-bash 00_local_sshkey.sh mike@<host>
+bash 00_local_sshkey.sh user@<host>
 ```
 
 Back on the server as **root** — lock down SSH once the key is confirmed working:
@@ -39,7 +39,7 @@ Back on the server as **root** — lock down SSH once the key is confirmed worki
 bash 00_server_sshd.sh      # key-only auth, no root login, restart sshd
 ```
 
-Then SSH in as **mike** and continue with Phase 1:
+Then SSH in as your user and continue with Phase 1:
 
 ```bash
 bash 01_basics_linux.sh
@@ -78,13 +78,13 @@ exec zsh && p10k configure
 |--------|-------------|:-----:|:-----:|
 | **Phase 0 — Server bootstrap** | | | |
 | `00_local_sshkey.sh` | Generate ED25519 key pair + copy to server | — | ✓ |
-| `00_server_adduser.sh` | Create `mike` user, sudo + docker groups | ✓ | — |
+| `00_server_adduser.sh` | Create user (`SETUP_USER`), sudo + docker groups | ✓ | — |
 | `00_server_sudoers.sh` | Passwordless sudo for user | ✓ | — |
 | `00_server_sshd.sh` | Key-only auth, disable password + root login | ✓ | — |
 | **Phase 1 — Core** | | | |
 | `01_basics_linux.sh` | apt baseline: git, zsh, eza, ripgrep, fd, node… | ✓ | — |
 | `01_basics_macos.sh` | Homebrew + same baseline via brew | — | ✓ |
-| `02_dotfiles.sh` | chezmoi dotfiles (marsmike) + tpm | ✓ | ✓ |
+| `02_dotfiles.sh` | chezmoi dotfiles (`DOTFILES_REPO`) + tpm | ✓ | ✓ |
 | `03_shell.sh` | oh-my-zsh, powerlevel10k, autosuggestions, syntax-hl | ✓ | ✓ |
 | **Phase 2 — Dev tools** | | | |
 | `10_neovim.sh` | Neovim AppImage → `~/.local/bin/nvim` | ✓ | — |
@@ -119,9 +119,9 @@ and copies the public key to a remote server using `ssh-copy-id`. Run this
 **before** `00_server_sshd.sh` locks out password auth.
 
 ```bash
-bash 00_local_sshkey.sh                                  # prompts for host
-bash 00_local_sshkey.sh mike@1.2.3.4                     # specify host
-bash 00_local_sshkey.sh mike@1.2.3.4 ~/.ssh/id_myserver  # custom key path
+bash 00_local_sshkey.sh                                   # uses SETUP_HOST from .env or prompts
+bash 00_local_sshkey.sh user@1.2.3.4                      # specify host
+bash 00_local_sshkey.sh user@1.2.3.4 ~/.ssh/id_myserver   # custom key path
 ```
 
 Default key path: `~/.ssh/id_ed25519`
@@ -130,13 +130,11 @@ Default key path: `~/.ssh/id_ed25519`
 
 ### `00_server_adduser.sh` — Create user *(run as root)*
 
-Creates the `mike` user and adds them to the `sudo` and `docker` groups.
+Creates the user (`SETUP_USER` from `.env`) and adds them to the `sudo` and `docker` groups.
 
 ```bash
 bash 00_server_adduser.sh
 ```
-
-Hardcoded to `mike` — edit the script to change the username.
 
 ---
 
@@ -147,8 +145,8 @@ specified user, then validates it with `visudo -c` before saving so a broken
 sudoers file can never land.
 
 ```bash
-sudo bash 00_server_sudoers.sh           # defaults to mike
-sudo bash 00_server_sudoers.sh alice     # any user
+sudo bash 00_server_sudoers.sh           # defaults to SETUP_USER
+sudo bash 00_server_sudoers.sh alice     # explicit override
 ```
 
 ---
@@ -208,7 +206,7 @@ Installs via brew: `git`, `gh`, `vim`, `wget`, `zoxide`, `fzf`, `bat`, `jq`,
 ### `02_dotfiles.sh` — Dotfiles + tmux plugins
 
 Installs [chezmoi](https://chezmoi.io) to `~/.local/bin/chezmoi` and applies
-the [marsmike/dotfiles](https://github.com/marsmike/dotfiles) repo. Also
+the dotfiles repo (`DOTFILES_REPO` from `.env`). Also
 bootstraps [tpm](https://github.com/tmux-plugins/tpm) (Tmux Plugin Manager).
 
 ```bash

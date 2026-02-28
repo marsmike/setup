@@ -1,6 +1,6 @@
 #!/bin/bash
 # Phase 1 — Core (every machine)
-# Installs chezmoi and applies marsmike dotfiles.
+# Installs chezmoi and applies dotfiles (repo set via DOTFILES_REPO in .env).
 # Also bootstraps tmux plugin manager (tpm).
 #
 # GitHub auth: place a GH_TOKEN in .env next to this script (see .env.example).
@@ -29,7 +29,11 @@ else
   "$GH_BIN" auth login --hostname github.com --git-protocol https
 fi
 
-DOTFILES_REPO="${DOTFILES_REPO:-marsmike}"
+DOTFILES_REPO="${DOTFILES_REPO:-}"
+if [ -z "${DOTFILES_REPO}" ]; then
+  echo "ERROR: DOTFILES_REPO is not set. Add it to .env (see .env.example)." >&2
+  exit 1
+fi
 echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}/dotfiles..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force "${DOTFILES_REPO}"
 

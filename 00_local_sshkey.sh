@@ -6,8 +6,8 @@
 #
 # Usage:
 #   bash 00_local_sshkey.sh                          # uses SETUP_HOST from .env or prompts
-#   bash 00_local_sshkey.sh mike@5.199.130.154
-#   bash 00_local_sshkey.sh mike@5.199.130.154 ~/.ssh/id_myserver
+#   bash 00_local_sshkey.sh user@1.2.3.4
+#   bash 00_local_sshkey.sh user@1.2.3.4 ~/.ssh/id_myserver
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

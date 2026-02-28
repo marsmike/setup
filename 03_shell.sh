@@ -8,12 +8,27 @@ ZSH_DIR="${HOME}/.oh-my-zsh"
 CUSTOM="${ZSH_DIR}/custom"
 
 # --- oh-my-zsh ---
-if [ -d "${ZSH_DIR}" ]; then
+# Check the actual framework file, not just the directory — the custom/
+# subdirectory can exist before the framework is installed (e.g. from
+# chezmoi dotfiles or a partial previous run), giving a false positive.
+if [ -f "${ZSH_DIR}/oh-my-zsh.sh" ]; then
   echo "oh-my-zsh already installed, skipping."
 else
+  # If a partial/empty directory exists, back up custom and remove it so
+  # the installer can clone fresh.
+  if [ -d "${ZSH_DIR}" ]; then
+    echo "Partial oh-my-zsh directory found — cleaning up before install..."
+    [ -d "${CUSTOM}" ] && cp -r "${CUSTOM}" /tmp/omz-custom-backup
+    rm -rf "${ZSH_DIR}"
+  fi
   echo "Installing oh-my-zsh..."
   RUNZSH=no KEEP_ZSHRC=yes \
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  # Restore any pre-existing custom plugins/themes
+  if [ -d /tmp/omz-custom-backup ]; then
+    cp -rn /tmp/omz-custom-backup/. "${CUSTOM}/"
+    rm -rf /tmp/omz-custom-backup
+  fi
 fi
 
 # --- powerlevel10k theme ---

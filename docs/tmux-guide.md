@@ -1,6 +1,6 @@
 # tmux Guide
 
-Your config lives at `~/.config/tmux/tmux.conf` (and `tmux.reset.conf`), managed via chezmoi.
+Your config lives at `~/.config/tmux/tmux.conf` (and `tmux.keybinds.conf`), managed via chezmoi.
 
 ---
 
@@ -8,8 +8,8 @@ Your config lives at `~/.config/tmux/tmux.conf` (and `tmux.reset.conf`), managed
 
 **Your prefix is `Ctrl+A`** (not the default `Ctrl+B`).
 
-Almost every tmux command is: press `Ctrl+A`, release, then press the next key.
-Exception: a few global bindings work without the prefix (see below).
+Most tmux commands: press `Ctrl+A`, release, then press the next key.
+The most frequent actions (pane/window navigation) need **no prefix at all**.
 
 ### Mental Model
 
@@ -29,14 +29,31 @@ Server
 
 ---
 
+## Navigation (no prefix — fastest actions)
+
+These work instantly, no prefix key needed:
+
+| Key | Action |
+|-----|--------|
+| `Alt+h` | focus pane left |
+| `Alt+j` | focus pane down |
+| `Alt+k` | focus pane up |
+| `Alt+l` | focus pane right |
+| `Alt+H` (Alt+Shift+H) | previous window |
+| `Alt+L` (Alt+Shift+L) | next window |
+
+> **Note:** Requires Ghostty's `macos-option-as-alt = left` (already set).
+> No conflicts with Magnet (`Ctrl+Option`), WhisprFlow (`Fn`), ScreenFloat (`Cmd+Shift`), or Nextcloud.
+
+---
+
 ## Sessions
 
 | Key | Action |
 |-----|--------|
 | `prefix + o` | **SessionX** — fuzzy session switcher with preview (your main session tool) |
 | `prefix + S` | choose session from list |
-| `prefix + Ctrl+D` | detach from current session (session keeps running) |
-| `prefix + Ctrl+C` | new window in $HOME (mnemonic: Create) |
+| `prefix + d` | detach from current session (session keeps running) |
 | `tmux new -s name` | create named session from shell |
 | `tmux attach -t name` | attach to existing session |
 | `tmux ls` | list sessions |
@@ -59,40 +76,51 @@ Status bar is at the **top**.
 
 | Key | Action |
 |-----|--------|
-| `prefix + Ctrl+C` | new window (opens in $HOME) |
-| `prefix + H` | previous window |
-| `prefix + L` | next window |
-| `prefix + Ctrl+A` | last window (toggle between two recent) |
-| `prefix + w` or `prefix + Ctrl+W` | list all windows |
+| `Alt+H` / `Alt+L` | previous / next window **(no prefix)** |
+| `prefix + c` | new window (opens in current path) |
+| `prefix + a` | last window (toggle between two recent) |
+| `prefix + w` | list all windows |
 | `prefix + r` | rename current window |
-| `prefix + "` | choose window from list |
 
 ---
 
 ## Panes (Splits)
 
+### Creating Splits (visual mnemonics)
+
 | Key | Action |
 |-----|--------|
-| `prefix + v` | split **vertically** (side by side) — opens in current path |
-| `prefix + s` | split **horizontally** (top/bottom) — opens in current path |
-| `prefix + \|` | split horizontally (opens in $HOME) |
-| `prefix + h/j/k/l` | move focus between panes (vim-style) |
+| `prefix + -` | split **horizontally** (top/bottom) — `-` looks like a horizontal line |
+| `prefix + \` | split **vertically** (side by side) — `\` looks like a vertical line |
+
+Both open in the current working directory.
+
+### Moving Between Panes
+
+| Key | Action |
+|-----|--------|
+| `Alt+h/j/k/l` | move focus between panes **(no prefix, vim-style)** |
+
+### Managing Panes
+
+| Key | Action |
+|-----|--------|
 | `prefix + z` | zoom/unzoom current pane (fullscreen toggle) |
-| `prefix + c` | kill current pane |
-| `prefix + x` | swap pane with next |
+| `prefix + x` | kill current pane |
+| `prefix + X` | swap pane with next |
 | `prefix + P` | toggle pane border status bar |
 | `prefix + *` | **synchronize panes** — type in all panes simultaneously |
 
 ### Resize Panes
 
-Hold `prefix` then tap repeatedly:
+Hold `prefix` then tap repeatedly (the `-r` flag allows repeat without re-pressing prefix):
 
 | Key | Action |
 |-----|--------|
-| `prefix + ,` | shrink left (20 cols) |
-| `prefix + .` | grow right (20 cols) |
-| `prefix + -` | shrink down (7 rows) |
-| `prefix + =` | grow up (7 rows) |
+| `prefix + H` | resize left (5 cols) |
+| `prefix + J` | resize down (5 rows) |
+| `prefix + K` | resize up (5 rows) |
+| `prefix + L` | resize right (5 cols) |
 
 ---
 
@@ -113,6 +141,8 @@ Hold `prefix` then tap repeatedly:
 
 | Key | Action |
 |-----|--------|
+| `Alt+h/j/k/l` | navigate panes |
+| `Alt+H` / `Alt+L` | prev/next window |
 | `Ctrl+N` | open **nvim popup** → `:ObsidianNew` (new note) |
 | `Ctrl+Q` | open **nvim popup** → `:ObsidianSearch` (search notes, 90%×85% popup) |
 
@@ -123,9 +153,7 @@ Hold `prefix` then tap repeatedly:
 | Key | Action |
 |-----|--------|
 | `prefix + R` | reload tmux config |
-| `prefix + Ctrl+L` or `prefix + l` | refresh client (fix display glitches) |
 | `prefix + :` | open tmux command prompt |
-| `prefix + Ctrl+X` | lock server |
 
 ---
 
@@ -197,32 +225,33 @@ prefix + Alt+U    remove plugins not in config
 ## Quick Reference Card
 
 ```
-SESSIONS              WINDOWS               PANES
-prefix+o  SessionX    prefix+H  prev        prefix+v  split vert
-prefix+S  list        prefix+L  next        prefix+s  split horiz
-prefix+^D detach      prefix+^A last        prefix+hjkl navigate
-                      prefix+r  rename      prefix+z  zoom toggle
-                      prefix+w  list        prefix+c  kill pane
-                                            prefix+*  sync all
+NO PREFIX (instant)        WINDOWS (prefix+key)       SPLITS (prefix+key)
+Alt+hjkl  move panes       c  new window              -  split ─ (horizontal)
+Alt+H     prev window       a  last window             \  split │ (vertical)
+Alt+L     next window       r  rename
+                            w  list                   PANES (prefix+key)
+SESSIONS (prefix+key)                                 x  kill pane
+o  SessionX              RESIZE (prefix, repeatable)   z  zoom toggle
+S  list sessions         H/J/K/L  resize 5 cols/rows   X  swap pane
+d  detach                                              *  sync all
 
-COPY MODE             GLOBAL (no prefix)
-prefix+[  enter       Ctrl+N    Obsidian new note
-v         select      Ctrl+Q    Obsidian search
+COPY MODE                GLOBAL (no prefix)
+prefix+[  enter          Ctrl+N  Obsidian new note
+v         select         Ctrl+Q  Obsidian search
 y         yank
-q         quit
-
-MISC
-prefix+R  reload config
-prefix+u  pick URL
-prefix+Space  thumbs (hint copy)
-prefix+F  tmux-fzf menu
+q         quit           MISC (prefix+key)
+                         R  reload config
+                         u  pick URL
+                         Space  thumbs (hint copy)
+                         F  tmux-fzf menu
 ```
 
 ---
 
 ## Tips
 
-- **SSH + sessions**: `tmux new -s project` on the remote host. Detach with `prefix+Ctrl+D`. Reconnect with `tmux attach -t project`. Sessions survive network drops.
+- **SSH + sessions**: `tmux new -s project` on the remote host. Detach with `prefix+d`. Reconnect with `tmux attach -t project`. Sessions survive network drops.
 - **Sync panes** (`prefix + *`): useful for running the same command on multiple servers at once.
 - **Zoom** (`prefix + z`): temporarily fullscreen a pane. Press again to restore splits.
 - **ObsidianNew** (`Ctrl+N`): works from anywhere — opens a floating nvim window to take a quick note without leaving your current context.
+- **Alt key**: Uses Left Option via Ghostty's `macos-option-as-alt = left`. Right Option still types special characters (é, ü, etc.).

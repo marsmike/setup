@@ -7,6 +7,17 @@ numbered by phase so you always know what to run and in what order.
 
 ## Quick Start
 
+### First: set up `.env`
+
+```bash
+cp .env.example .env
+# fill in SETUP_USER, SETUP_HOST, DOTFILES_REPO, GH_TOKEN
+```
+
+`.env` is sourced automatically by all scripts — no more hardcoded usernames or tokens.
+
+---
+
 ### New Linux Server
 
 Run as **root** on the fresh server:
@@ -227,20 +238,13 @@ After running:
 
 ```bash
 exec zsh           # reload shell
-p10k configure     # interactive prompt wizard
+p10k configure     # optional — config already applied from dotfiles
 ```
 
 Make sure your `.zshrc` contains:
 ```zsh
 ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
-```
-
-Save your p10k config to dotfiles:
-```bash
-chezmoi add ~/.p10k.zsh
-chezmoi cd
-git add dot_p10k.zsh && git commit -m "add p10k config" && git push
 ```
 
 ---

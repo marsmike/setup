@@ -1,13 +1,17 @@
 #!/bin/bash
 # Phase 0 — Server only (run as root)
-# Grants passwordless sudo to the specified user (default: mike).
+# Grants passwordless sudo to the specified user.
+# Reads SETUP_USER from .env if present (default: mike).
 #
 # Usage:
-#   sudo bash 00_server_sudoers.sh          # defaults to mike
-#   sudo bash 00_server_sudoers.sh alice    # specify user
+#   sudo bash 00_server_sudoers.sh          # uses SETUP_USER or mike
+#   sudo bash 00_server_sudoers.sh alice    # explicit override
 set -euo pipefail
 
-TARGET_USER="${1:-mike}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "${SCRIPT_DIR}/.env" ] && set -o allexport && source "${SCRIPT_DIR}/.env" && set +o allexport
+
+TARGET_USER="${1:-${SETUP_USER:-mike}}"
 SUDOERS_FILE="/etc/sudoers.d/${TARGET_USER}-nopasswd"
 
 echo "${TARGET_USER} ALL=(ALL) NOPASSWD: ALL" > "${SUDOERS_FILE}"

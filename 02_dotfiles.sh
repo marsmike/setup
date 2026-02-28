@@ -29,8 +29,9 @@ else
   "$GH_BIN" auth login --hostname github.com --git-protocol https
 fi
 
-echo "Installing chezmoi and applying dotfiles from marsmike/dotfiles..."
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force marsmike
+DOTFILES_REPO="${DOTFILES_REPO:-marsmike}"
+echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}/dotfiles..."
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force "${DOTFILES_REPO}"
 
 echo ""
 echo "Loading Tmux Plugin Manager (tpm)..."

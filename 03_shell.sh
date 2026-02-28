@@ -61,9 +61,9 @@ fi
 # --- ensure history file exists (mcfly/atuin error if it's missing) ---
 touch "${HOME}/.zsh_history"
 
-# --- guard mcfly in .zshrc (it's optional — only run if installed) ---
-# The dotfiles .zshrc has a bare eval that errors when mcfly isn't installed.
-# Replace it with a guarded version so it silently skips if not present.
+# --- guard mcfly in .zshrc if present ---
+# Dotfiles sometimes include a bare mcfly eval that errors when mcfly isn't
+# installed. Replace with a guarded form so zsh starts cleanly regardless.
 if [ -f "${HOME}/.zshrc" ] && grep -q '^eval "\$(mcfly init zsh)"' "${HOME}/.zshrc"; then
   echo "Guarding mcfly in .zshrc (skips silently if mcfly not installed)..."
   sed -i.bak 's|^eval "\$(mcfly init zsh)"|command -v mcfly \&>/dev/null \&\& eval "$(mcfly init zsh)"|' \

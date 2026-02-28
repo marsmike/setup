@@ -12,7 +12,7 @@ ANACONDA_VERSION="Anaconda3-2024.10-1"
 case "${MODE}" in
   miniconda)
     echo "Installing Miniconda (latest)..."
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+    curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o ~/miniconda.sh
     bash ~/miniconda.sh -b -p "${HOME}/miniconda"
     rm ~/miniconda.sh
     echo "Miniconda installed at ~/miniconda"

@@ -172,6 +172,8 @@ Changes applied:
 - `PermitRootLogin no`
 - `AuthorizedKeysFile .ssh/authorized_keys`
 
+> `RSAAuthentication` is deprecated in OpenSSH 7.4+ and is no longer modified.
+
 ---
 
 ## Phase 1 — Core
@@ -189,13 +191,18 @@ bash 01_basics_linux.sh
 |-------|-------|
 | Core | `git` `gh` `vim` `wget` `curl` `build-essential` |
 | Shell | `zsh` `tmux` `fzf` `zoxide` |
-| Files | `eza` `bat` `fd-find` `ripgrep` `ranger` |
+| Files | `eza` `bat` `fd` `ripgrep` `ranger` |
 | Monitor | `btop` `htop` `ncdu` `powertop` `hyperfine` |
 | Data | `jq` `yq` `glow` `lnav` `csvlens` `ack` `tldr` |
 | Dev workflow | `git-delta` `direnv` `watchexec` `python3` `docker-compose` |
 | Network | `httpie` `rsync` `dnsutils` |
 | AI / LLM | `models` |
 | Runtime | Node.js LTS (via nvm) `libfuse2` |
+
+> **Notes:**
+> - `bat` is installed as `batcat` on Ubuntu — the script creates a `~/.local/bin/bat` symlink automatically.
+> - `fd` is the `fd-find` apt package — the binary is `fd` after install.
+> - nvm init is added to `~/.zshrc` by `02_dotfiles.sh` so it survives chezmoi applying dotfiles.
 
 ---
 
@@ -227,8 +234,10 @@ bash 01_basics_macos.sh
 ### `02_dotfiles.sh` — Dotfiles + tmux plugins
 
 Installs [chezmoi](https://chezmoi.io) to `~/.local/bin/chezmoi` and applies
-the dotfiles repo (`DOTFILES_REPO` from `.env`). Also
-bootstraps [tpm](https://github.com/tmux-plugins/tpm) (Tmux Plugin Manager).
+the dotfiles repo (`DOTFILES_REPO` from `.env`). Also bootstraps
+[tpm](https://github.com/tmux-plugins/tpm) (Tmux Plugin Manager) and appends
+nvm init to `~/.zshrc` if not already present (chezmoi dotfiles templates
+typically don't include it).
 
 ```bash
 bash 02_dotfiles.sh
@@ -392,21 +401,20 @@ bash 11_docker_tools.sh
 
 ### `20_atuin.sh` — atuin shell history
 
-Replaces `mcfly` with [atuin](https://atuin.sh) — shell history with full-text
-search, statistics, and optional cross-machine sync.
+Installs [atuin](https://atuin.sh) — shell history with full-text search,
+statistics, and optional cross-machine sync.
 
 ```bash
 bash 20_atuin.sh
 ```
 
+The script automatically:
+- Adds `~/.atuin/bin` to `PATH` in `.zshrc` and `.bashrc`
+- Adds `eval "$(atuin init zsh)"` to `.zshrc` (guarded so it's safe if atuin isn't present)
+
 After installing:
 ```bash
 atuin import auto          # migrate existing shell history
-```
-
-Add to `.zshrc` (replacing any mcfly eval):
-```zsh
-eval "$(atuin init zsh)"
 ```
 
 Optional sync across machines:

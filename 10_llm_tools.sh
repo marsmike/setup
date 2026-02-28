@@ -22,4 +22,4 @@ for tool in llm files-to-prompt ttok strip-tags aider-chat; do
 done
 
 echo ""
-echo "Installed: llm, files-to-prompt, ttok, strip-tags, aider"
+echo "Installed: llm, files-to-prompt, ttok, strip-tags, aider (aider-chat)"

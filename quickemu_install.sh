@@ -13,7 +13,8 @@ sudo apt-get install -y \
   wget xdg-user-dirs zsync unzip
 
 echo "Adding quickemu PPA..."
-sudo apt-add-repository -y ppa:flexiondotorg/quickemu
+grep -rq 'flexiondotorg/quickemu' /etc/apt/sources.list* 2>/dev/null \
+  || sudo apt-add-repository -y ppa:flexiondotorg/quickemu
 sudo apt-get update -qq
 sudo apt-get install -y quickemu
 

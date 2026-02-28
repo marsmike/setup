@@ -1,4 +1,8 @@
 #!/bin/bash
+# Utilities — Linux desktop only
+# Swaps TLDE/LSGT key definitions on Logitech MX Keys so F-row keys work
+# without holding Fn. Modifies /usr/share/X11/xkb/symbols/de in place.
+set -euo pipefail
 
 file_path="/usr/share/X11/xkb/symbols/de"
 temp_file="$file_path.temp"

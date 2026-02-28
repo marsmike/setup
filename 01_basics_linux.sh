@@ -19,7 +19,9 @@ mkdir -p ~/.local/bin
 [ -f /usr/bin/batcat ] && ln -sf /usr/bin/batcat ~/.local/bin/bat
 
 # Install nvm and latest Node LTS
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+NVM_VER=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
+  | grep -oP '"tag_name": "\K[^"]+')
+curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VER}/install.sh" | bash
 export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
 \. "$NVM_DIR/nvm.sh"

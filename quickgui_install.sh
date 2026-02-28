@@ -5,7 +5,8 @@
 set -euo pipefail
 
 echo "Adding quickgui PPA..."
-sudo add-apt-repository -y ppa:yannick-mauray/quickgui
+grep -rq 'yannick-mauray/quickgui' /etc/apt/sources.list* 2>/dev/null \
+  || sudo add-apt-repository -y ppa:yannick-mauray/quickgui
 sudo apt-get update -qq
 sudo apt-get install -y quickgui
 

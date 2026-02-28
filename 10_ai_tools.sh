@@ -1,6 +1,6 @@
 #!/bin/bash
 # Phase 2 — Dev tools
-# Installs AI coding assistants: Claude Code, Gemini CLI, GitHub Copilot CLI, Pi.
+# Installs AI coding assistants and LLM CLI utilities.
 # Prerequisite: nvm + node LTS (included in 01_basics_linux.sh / 01_basics_macos.sh)
 set -euo pipefail
 
@@ -19,6 +19,8 @@ if ! command -v npm &>/dev/null; then
   exit 1
 fi
 
+# ── Node-based AI tools ───────────────────────────────────────────────────────
+
 # Claude Code (Anthropic) — native installer
 echo "Installing Claude Code..."
 curl -fsSL https://claude.ai/install.sh | bash
@@ -35,6 +37,25 @@ gh extension install github/gh-copilot
 echo "Installing Pi coding agent..."
 npm install -g @mariozechner/pi-coding-agent
 
+# ── Python AI tools (via uv) ──────────────────────────────────────────────────
+
+# Bootstrap uv if not present
+if ! command -v uv &>/dev/null; then
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
+# llm     — run/pipe prompts against any model, log history (Simon Willison)
+# files-to-prompt — concat codebases into a single prompt
+# ttok    — token counting before API calls
+# strip-tags — strip HTML to clean text for LLM input
+# aider   — AI pair programmer, git-native
+for tool in llm files-to-prompt ttok strip-tags aider-chat; do
+  echo "Installing $tool..."
+  uv tool install "$tool"
+done
+
 echo ""
-echo "Installed: claude, gemini, gh copilot, pi"
+echo "Installed: claude, gemini, gh copilot, pi, llm, files-to-prompt, ttok, strip-tags, aider"
 echo "Run 'claude' to get started with Claude Code."

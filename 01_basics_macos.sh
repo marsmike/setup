@@ -14,6 +14,9 @@ brew install \
   zoxide fzf bat jq tmux zsh btop ncdu tldr httpie rsync \
   eza ripgrep fd \
   lazygit \
+  git-delta direnv hyperfine lnav watchexec yq glow \
+  jless csvlens viddy \
+  arimxyer/tap/models \
   nvm
 
 # Install latest Node LTS via nvm

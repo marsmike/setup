@@ -2,14 +2,13 @@ profile: dev-base
 app: fedora-sway
 
 cloudinit:
-  base_template: cloudinit/fedora.yaml.tpl
+  base_template: cloudinit/coreos.ign.tpl
 
 vm:
   id: 104
   name: fedora-sway
   node: pve-node-02
-  image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/41/Spins/x86_64/iso/Fedora-Sway-Live-x86_64-41-1.4.iso"
-  boot_iso: true
+  image_url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/41.20250209.3.0/x86_64/fedora-coreos-41.20250209.3.0-qemu.x86_64.qcow2.xz"
 
 hardware:
   memory: 8192

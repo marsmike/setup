@@ -1,8 +1,13 @@
 description: "Fedora Atomic Sway desktop environment"
 
-# Fedora Atomic relies on rpm-ostree and Distrobox, so we skip the apt-based Linux basics script.
-# We will still clone the repo and apply dotfiles.
+# Rebase to sericea (Sway Atomic) and chezmoi dotfile setup are handled
+# automatically by Ignition systemd units (rebase-to-sway.service and
+# setup-user-env.service). The VM will reboot twice:
+#   1. First boot: FCOS → rebase to sericea → reboot
+#   2. Second boot: sericea → chezmoi dotfiles setup
+#
+# post_provision waits for both boots, then verifies.
+wait_before_post_provision: 600
 post_provision:
-  - "git clone https://github.com/marsmike/setup.git ~/setup || true"
-  - "cd ~/setup && bash linux/02_dotfiles.sh"
-  - "echo 'Note: System relies on rpm-ostree. Install tools via Distrobox or rpm-ostree install.'"
+  - "rpm-ostree status | grep -q sericea && echo 'OK: sericea rebase confirmed' || echo 'WARN: rebase may still be in progress'"
+  - "test -f /var/lib/setup-user-env.done && echo 'OK: user env setup complete' || echo 'WARN: user env setup may still be running'"

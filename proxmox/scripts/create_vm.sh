@@ -53,9 +53,18 @@ echo "  Creating VM: $VM_NAME (ID: $VMID)"
 echo "========================================"
 
 # Download cloud image or ISO if not cached
-if [ ! -f "$IMAGE_FILE" ]; then
+if [ ! -f "$IMAGE_FILE" ] && [ ! -f "${IMAGE_FILE%.xz}" ]; then
   echo "Downloading image ($IMAGE_FILENAME)..."
   wget -q --show-progress "$IMAGE_URL" -O "$IMAGE_FILE"
+fi
+
+if [[ "$IMAGE_FILE" == *.xz ]]; then
+  if [ -f "$IMAGE_FILE" ]; then
+    echo "Extracting xz image..."
+    unxz -f "$IMAGE_FILE"
+  fi
+  IMAGE_FILE="${IMAGE_FILE%.xz}"
+  IMAGE_FILENAME="$(basename "$IMAGE_FILE")"
 fi
 
 # Destroy existing VM with same ID (idempotent)
@@ -102,27 +111,29 @@ else
   echo "Importing disk..."
   qm set "$VMID" --scsi0 "${STORAGE}:0,import-from=${IMPORT_FILE},discard=on,ssd=1"
 
-  # Cloud-init drive
-  echo "Adding cloud-init drive..."
-  qm set "$VMID" --ide2 "${STORAGE}:cloudinit"
-
   # Boot order
   qm set "$VMID" --boot order=scsi0
 
-  # Apply cloud-init snippet
+  # Apply cloud-init or Ignition snippet
   SNIPPET_NAME="$(basename "$CLOUDINIT_FILE")"
-  echo "Applying cloud-init: $SNIPPET_NAME"
-  qm set "$VMID" --cicustom "user=local:snippets/${SNIPPET_NAME}"
+  echo "Applying initialization configuration: $SNIPPET_NAME"
+  if [[ "$SNIPPET_NAME" == *.ign ]]; then
+    # Ignition for CoreOS/Flatcar
+    qm set "$VMID" --args "-fw_cfg name=opt/com.coreos/config,file=/var/lib/vz/snippets/${SNIPPET_NAME}"
+  else
+    # Standard Cloud-Init
+    echo "Adding cloud-init drive..."
+    qm set "$VMID" --ide2 "${STORAGE}:cloudinit"
+    qm set "$VMID" --cicustom "user=local:snippets/${SNIPPET_NAME}"
 
-  # Static network
-  echo "Configuring network: $VM_IP/$VM_NETMASK gw $VM_GATEWAY"
-  qm set "$VMID" --ipconfig0 "ip=${VM_IP}/${VM_NETMASK},gw=${VM_GATEWAY}"
-  qm set "$VMID" --nameserver "$VM_DNS"
-  qm set "$VMID" --searchdomain "$VM_SEARCHDOMAIN"
+    echo "Configuring network: $VM_IP/$VM_NETMASK gw $VM_GATEWAY"
+    qm set "$VMID" --ipconfig0 "ip=${VM_IP}/${VM_NETMASK},gw=${VM_GATEWAY}"
+    qm set "$VMID" --nameserver "$VM_DNS"
+    qm set "$VMID" --searchdomain "$VM_SEARCHDOMAIN"
 
-  # Regenerate cloud-init ISO
-  echo "Generating cloud-init drive..."
-  qm cloudinit update "$VMID"
+    echo "Generating cloud-init drive..."
+    qm cloudinit update "$VMID"
+  fi
 fi
 
 # Tags

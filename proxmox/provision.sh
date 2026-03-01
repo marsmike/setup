@@ -125,11 +125,17 @@ if [ ! -f "$TPL_FILE" ]; then
   echo "ERROR: Cloud-init template not found: $TPL_FILE" >&2
   exit 1
 fi
-RENDERED_FILE="/tmp/${VM_NAME}-cloudinit.yaml"
+if [[ "$TPL_FILE" == *.ign.tpl ]]; then
+  SNIPPET_EXT="ign"
+else
+  SNIPPET_EXT="yaml"
+fi
+SNIPPET_NAME="${VM_NAME}-cloudinit.${SNIPPET_EXT}"
+RENDERED_FILE="/tmp/${SNIPPET_NAME}"
 
-export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER
+export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER VM_IP VM_NETMASK VM_GATEWAY VM_DNS
 # IMPORTANT: explicit variable list prevents envsubst from eating $HOME etc.
-envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${CHEZMOI_USER} ${SETUP_USER}' \
+envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${CHEZMOI_USER} ${SETUP_USER} ${VM_IP} ${VM_NETMASK} ${VM_GATEWAY} ${VM_DNS}' \
   < "$TPL_FILE" > "$RENDERED_FILE"
 
 # --- Summary ---
@@ -175,7 +181,7 @@ COPY_NODE() { "${SSH_PREFIX[@]}" scp  $SSH_OPTS "$1" "${PROXMOX_USER:-root}@${NO
 # --- Upload cloud-init snippet ---
 echo "Uploading cloud-init config to $NODE_NAME..."
 RUN_NODE "mkdir -p /var/lib/vz/snippets"
-COPY_NODE "$RENDERED_FILE" "/var/lib/vz/snippets/${VM_NAME}-cloudinit.yaml"
+COPY_NODE "$RENDERED_FILE" "/var/lib/vz/snippets/${SNIPPET_NAME}"
 
 # --- Upload create_vm.sh ---
 echo "Uploading create_vm.sh..."
@@ -201,7 +207,7 @@ RUN_NODE "/tmp/create_vm_${VM_NAME}.sh \
   --gateway ${VM_GATEWAY} \
   --dns ${VM_DNS} \
   --searchdomain ${VM_SEARCHDOMAIN} \
-  --cloudinit /var/lib/vz/snippets/${VM_NAME}-cloudinit.yaml \
+  --cloudinit /var/lib/vz/snippets/${SNIPPET_NAME} \
   ${CREATE_VM_FLAGS[*]:-}"
 
 # Cleanup temp file on node
@@ -213,8 +219,9 @@ if [ -n "$APP" ]; then
   if [ -f "$APP_FILE" ]; then
     POST_STEPS=$(yq '.post_provision[]' "$APP_FILE" 2>/dev/null || echo "")
     if [ -n "$POST_STEPS" ]; then
-      echo "Waiting 3 min for cloud-init to complete before app setup..."
-      sleep 180
+      WAIT_SECS=$(yq '.wait_before_post_provision // 180' "$APP_FILE")
+      echo "Waiting ${WAIT_SECS}s for initialization to complete before app setup..."
+      sleep "$WAIT_SECS"
       echo "Running post_provision steps for app: $APP"
       STEP_COUNT=$(yq '.post_provision | length' "$APP_FILE")
       for i in $(seq 0 $((STEP_COUNT - 1))); do

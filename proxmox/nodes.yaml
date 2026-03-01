@@ -13,7 +13,8 @@ nodes:
 
   - name: pve-node-03
     ip: 192.168.1.103
-    storage: nvme
+    storage: local-lvm
+    notes: "Production node only — no development deployments"
 
 # IPs reserved for infrastructure — never assign these to VMs
 reserved_ips:

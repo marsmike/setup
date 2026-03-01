@@ -4,7 +4,7 @@ app: claude-test
 vm:
   id: 103
   name: claude-test
-  node: pve-node-03
+  node: pve-node-02
 
 hardware:
   memory: 8192

@@ -8,6 +8,7 @@ vm:
   name: ragflow
   node: pve-node-01
 
+# Hardware override: dev-base profile is 8192MB but ragflow needs more headroom
 hardware:
   memory: 10000
   cores: 8

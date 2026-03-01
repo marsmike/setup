@@ -15,9 +15,16 @@ nodes:
     ip: 192.168.1.103
     storage: local-lvm
 
+# IPs reserved for infrastructure — never assign these to VMs
+reserved_ips:
+  - 192.168.1.1    # router/gateway
+  - 192.168.1.101  # pve-node-01
+  - 192.168.1.102  # pve-node-02
+  - 192.168.1.103  # pve-node-03
+
 # IP pool for new VMs (Claude scans vms/ to find the next free address)
 ip_pool:
-  start: 192.168.1.100
+  start: 192.168.1.110
   end:   192.168.1.199
   gateway: 192.168.1.1
   netmask: 24

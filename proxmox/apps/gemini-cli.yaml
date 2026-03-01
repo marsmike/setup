@@ -5,4 +5,6 @@ description: "Development VM with Gemini CLI"
 post_provision:
   - "git clone https://github.com/marsmike/setup.git ~/setup || true"
   - "cd ~/setup && bash linux/01_basics.sh"
+  - "cd ~/setup && bash linux/02_dotfiles.sh"
+  - "cd ~/setup && bash linux/03_shell.sh"
   - "cd ~/setup && bash tools/10_ai_tools.sh"

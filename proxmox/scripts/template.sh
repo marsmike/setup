@@ -11,7 +11,7 @@ set -euo pipefail
 TEMPLATE_ID="${1:-8200}"
 STORAGE="${2:-nvme}"
 IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-IMAGE_FILE="noble-server-cloudimg-amd64.img"
+IMAGE_FILE="/root/noble-server-cloudimg-amd64.img"
 
 echo "Building Ubuntu Noble template (VM $TEMPLATE_ID) on storage: $STORAGE"
 
@@ -42,7 +42,7 @@ qm create "$TEMPLATE_ID" \
   --net0 virtio,bridge=vmbr0,firewall=1
 
 echo "Importing disk..."
-qm set "$TEMPLATE_ID" --scsi0 "${STORAGE}:0,import-from=/root/${IMAGE_FILE},discard=on,ssd=1"
+qm set "$TEMPLATE_ID" --scsi0 "${STORAGE}:0,import-from=${IMAGE_FILE},discard=on,ssd=1"
 qm set "$TEMPLATE_ID" --ide2 "${STORAGE}:cloudinit"
 qm set "$TEMPLATE_ID" --boot order=scsi0
 qm set "$TEMPLATE_ID" --tags "ubuntu-noble,cloudinit,template"

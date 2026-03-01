@@ -1,0 +1,6 @@
+description: "Development VM for Claude Code Testing and marketplace"
+
+post_provision:
+  - "git clone https://github.com/marsmike/setup.git ~/setup || true"
+  - "cd ~/setup && bash linux/01_basics.sh"
+  - "cd ~/setup && bash tools/10_claude.sh"

@@ -1,0 +1,19 @@
+profile: dev-base
+app: claude-test
+
+vm:
+  id: 103
+  name: claude-test
+  node: pve-node-03
+
+hardware:
+  memory: 8192
+  cores: 4
+  disk: 32G
+
+network:
+  ip: 192.168.1.112
+  gateway: 192.168.1.1
+  netmask: 24
+  dns: 192.168.1.1
+  searchdomain: home

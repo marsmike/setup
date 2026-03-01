@@ -182,6 +182,11 @@ echo "Uploading create_vm.sh..."
 COPY_NODE "${SCRIPT_DIR}/scripts/create_vm.sh" "/tmp/create_vm_${VM_NAME}.sh"
 RUN_NODE "chmod +x /tmp/create_vm_${VM_NAME}.sh"
 
+BOOT_ISO=$(yq '.vm.boot_iso // false' "$VM_YAML")
+if [ "$BOOT_ISO" = "true" ]; then
+  CREATE_VM_FLAGS+=(--boot-iso)
+fi
+
 # --- Run creation ---
 echo "Creating VM on $NODE_NAME..."
 RUN_NODE "/tmp/create_vm_${VM_NAME}.sh \

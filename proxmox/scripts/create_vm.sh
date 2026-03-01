@@ -6,12 +6,13 @@
 #          --netmask 24 --gateway 192.168.1.1 --dns 192.168.1.1 \
 #          --searchdomain home --memory 8192 --cores 4 --disk 32G \
 #          --storage nvme --cloudinit /var/lib/vz/snippets/ragflow-cloudinit.yaml \
-#          [--image-url https://...]
+#          [--image-url https://...] [--boot-iso]
 
 set -euo pipefail
 
 DEFAULT_IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 IMAGE_URL=""
+BOOT_ISO=0
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -29,13 +30,18 @@ while [[ $# -gt 0 ]]; do
     --searchdomain) VM_SEARCHDOMAIN="$2"; shift 2 ;;
     --cloudinit)   CLOUDINIT_FILE="$2"; shift 2 ;;
     --image-url)   IMAGE_URL="$2";    shift 2 ;;
+    --boot-iso)    BOOT_ISO=1;        shift 1 ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
 
 [ -z "$IMAGE_URL" ] && IMAGE_URL="$DEFAULT_IMAGE_URL"
 IMAGE_FILENAME="$(basename "$IMAGE_URL")"
-IMAGE_FILE="/root/${IMAGE_FILENAME}"
+if [ "$BOOT_ISO" -eq 1 ]; then
+  IMAGE_FILE="/var/lib/vz/template/iso/${IMAGE_FILENAME}"
+else
+  IMAGE_FILE="/root/${IMAGE_FILENAME}"
+fi
 
 # Validate required flags
 for var in VMID VM_NAME STORAGE MEMORY CORES DISK VM_IP VM_NETMASK VM_GATEWAY VM_DNS VM_SEARCHDOMAIN CLOUDINIT_FILE; do
@@ -46,21 +52,15 @@ echo "========================================"
 echo "  Creating VM: $VM_NAME (ID: $VMID)"
 echo "========================================"
 
-# Download cloud image if not cached
+# Download cloud image or ISO if not cached
 if [ ! -f "$IMAGE_FILE" ]; then
-  echo "Downloading base cloud image ($IMAGE_FILENAME)..."
+  echo "Downloading image ($IMAGE_FILENAME)..."
   wget -q --show-progress "$IMAGE_URL" -O "$IMAGE_FILE"
 fi
 
-# Create a temporary copy for resize+import (preserves cached original size)
-IMPORT_FILE="${IMAGE_FILE%.*}-${VMID}-import.img"
-echo "Copying image for import (preserving cache)..."
-cp "$IMAGE_FILE" "$IMPORT_FILE"
-echo "Resizing copy to $DISK..."
-qemu-img resize "$IMPORT_FILE" "$DISK"
-
 # Destroy existing VM with same ID (idempotent)
 echo "Removing existing VM $VMID if present..."
+qm stop "$VMID" 2>/dev/null || true
 qm destroy "$VMID" 2>/dev/null || true
 
 # Create VM
@@ -79,47 +79,75 @@ qm create "$VMID" \
   --scsihw virtio-scsi-single \
   --net0 virtio,bridge=vmbr0,firewall=1
 
-# Import disk
-echo "Importing disk..."
-qm set "$VMID" --scsi0 "${STORAGE}:0,import-from=${IMPORT_FILE},discard=on,ssd=1"
+if [ "$BOOT_ISO" -eq 1 ]; then
+  echo "Creating empty $DISK disk..."
+  # Create an empty raw disk
+  pvesm alloc "$STORAGE" "$VMID" "vm-${VMID}-disk-0.raw" "$DISK"
+  qm set "$VMID" --scsi0 "${STORAGE}:${VMID}/vm-${VMID}-disk-0.raw,discard=on,ssd=1"
+  
+  echo "Mounting ISO as CD-ROM..."
+  qm set "$VMID" --ide2 "local:iso/${IMAGE_FILENAME},media=cdrom"
+  
+  echo "Setting boot order to CD-ROM first..."
+  qm set "$VMID" --boot order=ide2
 
-# Cloud-init drive
-echo "Adding cloud-init drive..."
-qm set "$VMID" --ide2 "${STORAGE}:cloudinit"
+else
+  # Import disk
+  IMPORT_FILE="${IMAGE_FILE%.*}-${VMID}-import.img"
+  echo "Copying image for import (preserving cache)..."
+  cp "$IMAGE_FILE" "$IMPORT_FILE"
+  echo "Resizing copy to $DISK..."
+  qemu-img resize "$IMPORT_FILE" "$DISK"
 
-# Boot order
-qm set "$VMID" --boot order=scsi0
+  echo "Importing disk..."
+  qm set "$VMID" --scsi0 "${STORAGE}:0,import-from=${IMPORT_FILE},discard=on,ssd=1"
 
-# Apply cloud-init snippet
-SNIPPET_NAME="$(basename "$CLOUDINIT_FILE")"
-echo "Applying cloud-init: $SNIPPET_NAME"
-qm set "$VMID" --cicustom "user=local:snippets/${SNIPPET_NAME}"
+  # Cloud-init drive
+  echo "Adding cloud-init drive..."
+  qm set "$VMID" --ide2 "${STORAGE}:cloudinit"
 
-# Static network
-echo "Configuring network: $VM_IP/$VM_NETMASK gw $VM_GATEWAY"
-qm set "$VMID" --ipconfig0 "ip=${VM_IP}/${VM_NETMASK},gw=${VM_GATEWAY}"
-qm set "$VMID" --nameserver "$VM_DNS"
-qm set "$VMID" --searchdomain "$VM_SEARCHDOMAIN"
+  # Boot order
+  qm set "$VMID" --boot order=scsi0
+
+  # Apply cloud-init snippet
+  SNIPPET_NAME="$(basename "$CLOUDINIT_FILE")"
+  echo "Applying cloud-init: $SNIPPET_NAME"
+  qm set "$VMID" --cicustom "user=local:snippets/${SNIPPET_NAME}"
+
+  # Static network
+  echo "Configuring network: $VM_IP/$VM_NETMASK gw $VM_GATEWAY"
+  qm set "$VMID" --ipconfig0 "ip=${VM_IP}/${VM_NETMASK},gw=${VM_GATEWAY}"
+  qm set "$VMID" --nameserver "$VM_DNS"
+  qm set "$VMID" --searchdomain "$VM_SEARCHDOMAIN"
+
+  # Regenerate cloud-init ISO
+  echo "Generating cloud-init drive..."
+  qm cloudinit update "$VMID"
+fi
 
 # Tags
 qm set "$VMID" --tags "ubuntu-noble,docker,dev-env"
-
-# Regenerate cloud-init ISO
-echo "Generating cloud-init drive..."
-qm cloudinit update "$VMID"
 
 # Start VM
 echo "Starting VM..."
 qm start "$VMID"
 
-# Clean up import copy
-rm -f "$IMPORT_FILE"
+if [ "$BOOT_ISO" -eq 1 ]; then
+  echo ""
+  echo "========================================"
+  echo "  VM $VM_NAME ($VMID) booted from ISO!"
+  echo "========================================"
+  echo "  Open the Proxmox web console to complete the GUI installation."
+else
+  # Clean up import copy
+  rm -f "$IMPORT_FILE"
 
-echo ""
-echo "========================================"
-echo "  VM $VM_NAME ($VMID) started!"
-echo "========================================"
-echo "  IP:     $VM_IP"
-echo "  SSH:    ssh mike@$VM_IP"
-echo "  Wait ~3-5 min for cloud-init to complete."
-echo "  Monitor: qm status $VMID"
+  echo ""
+  echo "========================================"
+  echo "  VM $VM_NAME ($VMID) started!"
+  echo "========================================"
+  echo "  IP:     $VM_IP"
+  echo "  SSH:    ssh mike@$VM_IP"
+  echo "  Wait ~3-5 min for cloud-init to complete."
+  echo "  Monitor: qm status $VMID"
+fi

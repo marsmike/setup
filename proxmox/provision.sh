@@ -219,10 +219,20 @@ if [ -n "$APP" ]; then
   if [ -f "$APP_FILE" ]; then
     POST_STEPS=$(yq '.post_provision[]' "$APP_FILE" 2>/dev/null || echo "")
     if [ -n "$POST_STEPS" ]; then
-      WAIT_SECS=$(yq '.wait_before_post_provision // 180' "$APP_FILE")
-      echo "Waiting ${WAIT_SECS}s for initialization to complete before app setup..."
-      sleep "$WAIT_SECS"
-      echo "Running post_provision steps for app: $APP"
+      MAX_WAIT=$(yq '.wait_before_post_provision // 180' "$APP_FILE")
+      echo "Waiting for VM to accept SSH (max ${MAX_WAIT}s)..."
+      ELAPSED=0
+      POLL=15
+      until ssh $SSH_OPTS -o BatchMode=yes "${SETUP_USER}@${VM_IP}" exit 2>/dev/null; do
+        if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+          echo "WARNING: SSH not available after ${MAX_WAIT}s, proceeding anyway..."
+          break
+        fi
+        echo "  Not up yet (${ELAPSED}s elapsed)..."
+        sleep $POLL
+        ELAPSED=$((ELAPSED + POLL))
+      done
+      echo "VM reachable via SSH. Running post_provision steps for app: $APP"
       STEP_COUNT=$(yq '.post_provision | length' "$APP_FILE")
       for i in $(seq 0 $((STEP_COUNT - 1))); do
         STEP=$(yq ".post_provision[$i]" "$APP_FILE")

@@ -83,7 +83,7 @@ qm create "$VMID" \
   --cpu host \
   --sockets 1 \
   --cores "$CORES" \
-  --vga serial0 \
+  --vga vmware \
   --serial0 socket \
   --scsihw virtio-scsi-single \
   --net0 virtio,bridge=vmbr0,firewall=1

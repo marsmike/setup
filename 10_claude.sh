@@ -13,12 +13,14 @@ echo "Claude Code $(claude --version) installed."
 echo "Run 'claude' to get started."
 
 # Register personal plugin marketplace (idempotent)
+# Note: chezmoi deploys settings.json with extraKnownMarketplaces, which is the
+# actual registration mechanism. This block covers machines where chezmoi hasn't run yet.
 echo ""
 echo "Registering personal Claude plugin marketplace..."
-KNOWN_MARKETPLACES="${HOME}/.claude/plugins/known_marketplaces.json"
-if [ -f "${KNOWN_MARKETPLACES}" ] && jq -e '."mike-plugins"' "${KNOWN_MARKETPLACES}" &>/dev/null; then
+SETTINGS_FILE="${HOME}/.claude/settings.json"
+if [ -f "${SETTINGS_FILE}" ] && jq -e '.extraKnownMarketplaces."mike-plugins"' "${SETTINGS_FILE}" &>/dev/null; then
     echo "Marketplace 'mike-plugins' already registered, skipping."
 else
-    claude plugin marketplace add marsmike/claude-plugins --scope user
+    claude plugin marketplace add github:marsmike/claude-plugins --scope user
     echo "Marketplace registered. Install plugins with: claude plugin install <name>@mike-plugins"
 fi

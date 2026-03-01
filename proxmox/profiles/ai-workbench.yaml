@@ -1,0 +1,10 @@
+# Heavy AI workload VM — large RAM for local models and RAG pipelines
+
+hardware:
+  memory: 24576   # 24 GB
+  cores: 8
+  disk: 96G
+  storage: nvme
+
+cloudinit:
+  base_template: cloudinit/base.yaml.tpl

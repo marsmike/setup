@@ -1,0 +1,11 @@
+# Standard development VM — full toolchain, moderate hardware
+# Covers: Docker, git, neovim, zsh, tmux, Python, Node, chezmoi dotfiles
+
+hardware:
+  memory: 8192    # MB
+  cores: 4
+  disk: 32G
+  storage: nvme   # overridden per-node by nodes.yaml if needed
+
+cloudinit:
+  base_template: cloudinit/base.yaml.tpl

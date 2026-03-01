@@ -1,20 +1,24 @@
 #!/bin/bash
 # Phase 1 — Core (every machine)
-# Installs chezmoi and applies dotfiles (repo set via DOTFILES_REPO in .env).
+# Installs chezmoi and applies dotfiles (repo set via DOTFILES_REPO, defaults to marsmike/dotfiles).
 # Also bootstraps tmux plugin manager (tpm).
 #
-# GitHub auth: place a GH_TOKEN in .env next to this script (see .env.example).
+# GitHub auth: place a GH_TOKEN in .env next to this script or in the repo root.
 set -euo pipefail
 
-# --- load .env if present (tokens, secrets) ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "${SCRIPT_DIR}/.env" ]; then
-  echo "Loading ${SCRIPT_DIR}/.env ..."
-  set -o allexport
-  # shellcheck source=/dev/null
-  source "${SCRIPT_DIR}/.env"
-  set +o allexport
-fi
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# --- load .env if present (tokens, secrets) ---
+for ENV_FILE in "${SCRIPT_DIR}/.env" "${REPO_ROOT}/.env"; do
+  if [ -f "$ENV_FILE" ]; then
+    echo "Loading $ENV_FILE ..."
+    set -o allexport
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +o allexport
+  fi
+done
 
 # --- GitHub CLI auth ---
 # gh is installed by 01_basics_*.sh; find it wherever it landed.
@@ -29,12 +33,8 @@ else
   "$GH_BIN" auth login --hostname github.com --git-protocol https
 fi
 
-DOTFILES_REPO="${DOTFILES_REPO:-}"
-if [ -z "${DOTFILES_REPO}" ]; then
-  echo "ERROR: DOTFILES_REPO is not set. Add it to .env (see .env.example)." >&2
-  exit 1
-fi
-echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}/dotfiles..."
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/marsmike/dotfiles.git}"
+echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force "${DOTFILES_REPO}"
 
 # Ensure nvm init survives in .zshrc after chezmoi applies dotfiles

@@ -21,6 +21,6 @@ SETTINGS_FILE="${HOME}/.claude/settings.json"
 if [ -f "${SETTINGS_FILE}" ] && jq -e '.extraKnownMarketplaces."mike-plugins"' "${SETTINGS_FILE}" &>/dev/null; then
     echo "Marketplace 'mike-plugins' already registered, skipping."
 else
-    claude plugin marketplace add marsmike/claude-plugins --scope user
+    claude plugin marketplace add https://github.com/marsmike/claude-plugins --scope user
     echo "Marketplace registered. Install plugins with: claude plugin install <name>@mike-plugins"
 fi

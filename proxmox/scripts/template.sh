@@ -17,7 +17,7 @@ echo "Building Ubuntu Noble template (VM $TEMPLATE_ID) on storage: $STORAGE"
 
 if [ ! -f "$IMAGE_FILE" ]; then
   echo "Downloading Ubuntu Noble cloud image..."
-  wget -q --show-progress "$IMAGE_URL"
+  wget -q --show-progress "$IMAGE_URL" -O "$IMAGE_FILE"
 fi
 
 echo "Resizing image to 32G..."

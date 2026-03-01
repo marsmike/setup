@@ -40,8 +40,10 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
+SETUP_USER="${SETUP_USER:-mike}"
+
 # Validate required secrets
-for var in SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER; do
+for var in SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER; do
   if [ -z "${!var:-}" ]; then
     echo "ERROR: $var is not set in $ENV_FILE" >&2
     exit 1
@@ -53,6 +55,7 @@ VM_NAME=$(yq '.vm.name'  "$VM_YAML")
 VM_ID=$(yq   '.vm.id'    "$VM_YAML")
 NODE_NAME=$(yq '.vm.node' "$VM_YAML")
 PROFILE=$(yq   '.profile' "$VM_YAML")
+APP=$(yq '.app // ""' "$VM_YAML")
 
 # Hardware: VM YAML overrides profile defaults
 MEMORY=$(yq '.hardware.memory // ""' "$VM_YAML")
@@ -114,9 +117,9 @@ fi
 TPL_FILE="${SCRIPT_DIR}/cloudinit/base.yaml.tpl"
 RENDERED_FILE="/tmp/${VM_NAME}-cloudinit.yaml"
 
-export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER
+export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER
 # IMPORTANT: explicit variable list prevents envsubst from eating $HOME etc.
-envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${CHEZMOI_USER}' \
+envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${CHEZMOI_USER} ${SETUP_USER}' \
   < "$TPL_FILE" > "$RENDERED_FILE"
 
 # --- Summary ---
@@ -188,10 +191,33 @@ RUN_NODE "/tmp/create_vm_${VM_NAME}.sh \
 # Cleanup temp file on node
 RUN_NODE "rm -f /tmp/create_vm_${VM_NAME}.sh" 2>/dev/null || true
 
+# --- Run app post_provision steps if app is defined ---
+if [ -n "$APP" ]; then
+  APP_FILE="${SCRIPT_DIR}/apps/${APP}.yaml"
+  if [ -f "$APP_FILE" ]; then
+    POST_STEPS=$(yq '.post_provision[]' "$APP_FILE" 2>/dev/null || echo "")
+    if [ -n "$POST_STEPS" ]; then
+      echo "Waiting 3 min for cloud-init to complete before app setup..."
+      sleep 180
+      echo "Running post_provision steps for app: $APP"
+      STEP_COUNT=$(yq '.post_provision | length' "$APP_FILE")
+      for i in $(seq 0 $((STEP_COUNT - 1))); do
+        STEP=$(yq ".post_provision[$i]" "$APP_FILE")
+        echo "  Step $((i+1))/$STEP_COUNT: $STEP"
+        "${SSH_PREFIX[@]}" ssh $SSH_OPTS "${SETUP_USER}@${VM_IP}" "$STEP" || \
+          echo "  WARNING: step failed (app may need manual setup)"
+      done
+      echo "App post_provision complete."
+    fi
+  else
+    echo "WARNING: app '$APP' defined but apps/${APP}.yaml not found — skipping post_provision"
+  fi
+fi
+
 echo ""
 echo "========================================"
 echo "  Done! VM $VM_NAME is starting."
 echo "========================================"
-echo "  SSH (after ~3-5 min):  ssh mike@${VM_IP}"
+echo "  SSH (after ~3-5 min):  ssh ${SETUP_USER}@${VM_IP}"
 echo "  Monitor:               ssh ${PROXMOX_USER:-root}@${NODE_IP} 'qm status ${VM_ID}'"
-echo "  Cloud-init log:        ssh mike@${VM_IP} 'sudo tail -f /var/log/cloud-init-output.log'"
+echo "  Cloud-init log:        ssh ${SETUP_USER}@${VM_IP} 'sudo tail -f /var/log/cloud-init-output.log'"

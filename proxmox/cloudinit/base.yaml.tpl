@@ -4,7 +4,7 @@ manage_etc_hosts: true
 fqdn: ${VM_NAME}.${VM_SEARCHDOMAIN}
 
 users:
-  - name: mike
+  - name: ${SETUP_USER}
     groups: [sudo, docker]
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
@@ -40,7 +40,7 @@ packages:
 write_files:
   - path: /etc/ssh/sshd_config.d/50-cloud-init.conf
     content: |
-      PasswordAuthentication yes
+      PasswordAuthentication no
       PubkeyAuthentication yes
       PermitRootLogin no
   - path: /etc/sysctl.d/99-enable-ipv4-forwarding.conf
@@ -56,13 +56,13 @@ runcmd:
   - sh /tmp/get-docker.sh
   - systemctl enable docker
   - systemctl start docker
-  - usermod -aG docker mike
+  - usermod -aG docker ${SETUP_USER}
   - rm /tmp/get-docker.sh
   - wget -q https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
   - chmod +x /usr/local/bin/ctop
-  - chown -R mike:mike /home/mike
+  - chown -R ${SETUP_USER}:${SETUP_USER} /home/${SETUP_USER}
   - |
-    su - mike << 'MIKESCRIPT'
+    su - ${SETUP_USER} << 'MIKESCRIPT'
     set -e
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
       RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -86,7 +86,7 @@ runcmd:
       git clone https://github.com/tmux-plugins/tpm $HOME/.tmux/plugins/tpm
     fi
     MIKESCRIPT
-  - chsh -s /usr/bin/zsh mike
+  - chsh -s /usr/bin/zsh ${SETUP_USER}
 
 power_state:
   mode: reboot

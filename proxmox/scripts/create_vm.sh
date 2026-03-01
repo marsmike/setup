@@ -46,9 +46,12 @@ if [ ! -f "$IMAGE_FILE" ]; then
   wget -q --show-progress "$IMAGE_URL" -O "$IMAGE_FILE"
 fi
 
-# Resize image to requested disk size
-echo "Resizing image to $DISK..."
-qemu-img resize "$IMAGE_FILE" "$DISK"
+# Create a temporary copy for resize+import (preserves cached original size)
+IMPORT_FILE="${IMAGE_FILE%.img}-${VMID}-import.img"
+echo "Copying image for import (preserving cache)..."
+cp "$IMAGE_FILE" "$IMPORT_FILE"
+echo "Resizing copy to $DISK..."
+qemu-img resize "$IMPORT_FILE" "$DISK"
 
 # Destroy existing VM with same ID (idempotent)
 echo "Removing existing VM $VMID if present..."
@@ -72,7 +75,7 @@ qm create "$VMID" \
 
 # Import disk
 echo "Importing disk..."
-qm set "$VMID" --scsi0 "${STORAGE}:0,import-from=${IMAGE_FILE},discard=on,ssd=1"
+qm set "$VMID" --scsi0 "${STORAGE}:0,import-from=${IMPORT_FILE},discard=on,ssd=1"
 
 # Cloud-init drive
 echo "Adding cloud-init drive..."
@@ -102,6 +105,9 @@ qm cloudinit update "$VMID"
 # Start VM
 echo "Starting VM..."
 qm start "$VMID"
+
+# Clean up import copy
+rm -f "$IMPORT_FILE"
 
 echo ""
 echo "========================================"

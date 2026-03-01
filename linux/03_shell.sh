@@ -71,8 +71,8 @@ if [ -f "${HOME}/.zshrc" ] && grep -q '^eval "\$(mcfly init zsh)"' "${HOME}/.zsh
 fi
 
 # --- set zsh as default shell ---
-ZSH_BIN="$(which zsh)"
-if [ "${SHELL}" != "${ZSH_BIN}" ]; then
+ZSH_BIN="$(command -v zsh || echo "")"
+if [ -n "${ZSH_BIN}" ] && [ "${SHELL}" != "${ZSH_BIN}" ]; then
   echo "Setting zsh as default shell..."
   if sudo -n usermod -s "${ZSH_BIN}" "${USER}" 2>/dev/null; then
     echo "Default shell changed to zsh."
@@ -80,6 +80,8 @@ if [ "${SHELL}" != "${ZSH_BIN}" ]; then
     echo "NOTE: Could not set default shell automatically (needs sudo)."
     echo "Run manually: chsh -s ${ZSH_BIN}"
   fi
+elif [ -z "${ZSH_BIN}" ]; then
+  echo "NOTE: zsh is not installed or not in PATH. Skipping shell change."
 fi
 
 echo ""

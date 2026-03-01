@@ -22,15 +22,23 @@ done
 
 # --- GitHub CLI auth ---
 # gh is installed by 01_basics_*.sh; find it wherever it landed.
-GH_BIN="$(command -v gh 2>/dev/null || echo "${HOME}/.local/bin/gh")"
-if "$GH_BIN" auth status &>/dev/null; then
-  echo "gh already authenticated, skipping."
-elif [ -n "${GH_TOKEN:-}" ]; then
-  echo "Authenticating gh via GH_TOKEN..."
-  echo "$GH_TOKEN" | "$GH_BIN" auth login --with-token
+GH_BIN="$(command -v gh 2>/dev/null || echo "")"
+if [ -z "$GH_BIN" ] && [ -f "${HOME}/.local/bin/gh" ]; then
+  GH_BIN="${HOME}/.local/bin/gh"
+fi
+
+if [ -n "$GH_BIN" ] && [ -x "$GH_BIN" ]; then
+  if "$GH_BIN" auth status &>/dev/null; then
+    echo "gh already authenticated, skipping."
+  elif [ -n "${GH_TOKEN:-}" ]; then
+    echo "Authenticating gh via GH_TOKEN..."
+    echo "$GH_TOKEN" | "$GH_BIN" auth login --with-token
+  else
+    echo "Logging into GitHub (interactive)..."
+    "$GH_BIN" auth login --hostname github.com --git-protocol https
+  fi
 else
-  echo "Logging into GitHub (interactive)..."
-  "$GH_BIN" auth login --hostname github.com --git-protocol https
+  echo "gh CLI not found, skipping authentication."
 fi
 
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/marsmike/dotfiles.git}"

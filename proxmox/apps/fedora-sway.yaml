@@ -1,0 +1,8 @@
+description: "Fedora Atomic Sway desktop environment"
+
+# Fedora Atomic relies on rpm-ostree and Distrobox, so we skip the apt-based Linux basics script.
+# We will still clone the repo and apply dotfiles.
+post_provision:
+  - "git clone https://github.com/marsmike/setup.git ~/setup || true"
+  - "cd ~/setup && bash linux/02_dotfiles.sh"
+  - "echo 'Note: System relies on rpm-ostree. Install tools via Distrobox or rpm-ostree install.'"

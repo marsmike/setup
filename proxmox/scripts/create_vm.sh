@@ -5,12 +5,13 @@
 # Usage: create_vm.sh --vmid 100 --name ragflow --ip 192.168.1.100 \
 #          --netmask 24 --gateway 192.168.1.1 --dns 192.168.1.1 \
 #          --searchdomain home --memory 8192 --cores 4 --disk 32G \
-#          --storage nvme --cloudinit /var/lib/vz/snippets/ragflow-cloudinit.yaml
+#          --storage nvme --cloudinit /var/lib/vz/snippets/ragflow-cloudinit.yaml \
+#          [--image-url https://...]
 
 set -euo pipefail
 
-IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-IMAGE_FILE="/root/noble-server-cloudimg-amd64.img"
+DEFAULT_IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+IMAGE_URL=""
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -27,9 +28,14 @@ while [[ $# -gt 0 ]]; do
     --dns)         VM_DNS="$2";       shift 2 ;;
     --searchdomain) VM_SEARCHDOMAIN="$2"; shift 2 ;;
     --cloudinit)   CLOUDINIT_FILE="$2"; shift 2 ;;
+    --image-url)   IMAGE_URL="$2";    shift 2 ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
+
+[ -z "$IMAGE_URL" ] && IMAGE_URL="$DEFAULT_IMAGE_URL"
+IMAGE_FILENAME="$(basename "$IMAGE_URL")"
+IMAGE_FILE="/root/${IMAGE_FILENAME}"
 
 # Validate required flags
 for var in VMID VM_NAME STORAGE MEMORY CORES DISK VM_IP VM_NETMASK VM_GATEWAY VM_DNS VM_SEARCHDOMAIN CLOUDINIT_FILE; do
@@ -42,12 +48,12 @@ echo "========================================"
 
 # Download cloud image if not cached
 if [ ! -f "$IMAGE_FILE" ]; then
-  echo "Downloading Ubuntu Noble cloud image..."
+  echo "Downloading base cloud image ($IMAGE_FILENAME)..."
   wget -q --show-progress "$IMAGE_URL" -O "$IMAGE_FILE"
 fi
 
 # Create a temporary copy for resize+import (preserves cached original size)
-IMPORT_FILE="${IMAGE_FILE%.img}-${VMID}-import.img"
+IMPORT_FILE="${IMAGE_FILE%.*}-${VMID}-import.img"
 echo "Copying image for import (preserving cache)..."
 cp "$IMAGE_FILE" "$IMPORT_FILE"
 echo "Resizing copy to $DISK..."

@@ -1,0 +1,23 @@
+profile: dev-base
+app: fedora-sway
+
+cloudinit:
+  base_template: cloudinit/fedora.yaml.tpl
+
+vm:
+  id: 104
+  name: fedora-sway
+  node: pve-node-02
+  image_url: "https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-40-1.14.x86_64.qcow2"
+
+hardware:
+  memory: 8192
+  cores: 4
+  disk: 64G
+
+network:
+  ip: 192.168.1.113
+  gateway: 192.168.1.1
+  netmask: 24
+  dns: 192.168.1.1
+  searchdomain: home

@@ -108,13 +108,23 @@ NODE_STORAGE=$(yq ".nodes[] | select(.name == \"${NODE_NAME}\") | .storage" "$NO
 VM_STORAGE=$(yq '.hardware.storage // ""' "$VM_YAML")
 [ -n "$VM_STORAGE" ] && NODE_STORAGE="$VM_STORAGE"
 
+IMAGE_URL=$(yq '.vm.image_url // ""' "$VM_YAML")
+CREATE_VM_FLAGS=()
+[ -n "$IMAGE_URL" ] && CREATE_VM_FLAGS+=(--image-url "$IMAGE_URL")
+
 if [ -z "$NODE_IP" ]; then
   echo "ERROR: Node '$NODE_NAME' not found in $NODES_FILE" >&2
   exit 1
 fi
 
 # --- Render cloud-init template ---
-TPL_FILE="${SCRIPT_DIR}/cloudinit/base.yaml.tpl"
+TPL_YAML_PATH=$(yq '.cloudinit.base_template // ""' "$VM_YAML")
+[ -z "$TPL_YAML_PATH" ] && TPL_YAML_PATH=$(yq '.cloudinit.base_template // "cloudinit/base.yaml.tpl"' "$PROFILE_FILE")
+TPL_FILE="${SCRIPT_DIR}/${TPL_YAML_PATH}"
+if [ ! -f "$TPL_FILE" ]; then
+  echo "ERROR: Cloud-init template not found: $TPL_FILE" >&2
+  exit 1
+fi
 RENDERED_FILE="/tmp/${VM_NAME}-cloudinit.yaml"
 
 export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER
@@ -186,7 +196,8 @@ RUN_NODE "/tmp/create_vm_${VM_NAME}.sh \
   --gateway ${VM_GATEWAY} \
   --dns ${VM_DNS} \
   --searchdomain ${VM_SEARCHDOMAIN} \
-  --cloudinit /var/lib/vz/snippets/${VM_NAME}-cloudinit.yaml"
+  --cloudinit /var/lib/vz/snippets/${VM_NAME}-cloudinit.yaml \
+  ${CREATE_VM_FLAGS[*]:-}"
 
 # Cleanup temp file on node
 RUN_NODE "rm -f /tmp/create_vm_${VM_NAME}.sh" 2>/dev/null || true

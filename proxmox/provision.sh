@@ -77,6 +77,16 @@ DEFAULT_DNS=$(yq     '.ip_pool.dns'          "$NODES_FILE")
 DEFAULT_DOMAIN=$(yq  '.ip_pool.searchdomain' "$NODES_FILE")
 
 VM_IP=$(yq '.network.ip' "$VM_YAML")
+
+# Validate required fields parsed from VM YAML
+for field_name in VM_NAME VM_ID NODE_NAME PROFILE VM_IP; do
+  val="${!field_name}"
+  if [ -z "$val" ] || [ "$val" = "null" ]; then
+    echo "ERROR: Required field missing or null in $VM_YAML: ${field_name,,} (got: '$val')" >&2
+    exit 1
+  fi
+done
+
 VM_GATEWAY=$(yq '.network.gateway // ""' "$VM_YAML")
 VM_NETMASK=$(yq '.network.netmask // ""' "$VM_YAML")
 VM_DNS=$(yq     '.network.dns     // ""' "$VM_YAML")
@@ -134,9 +144,9 @@ fi
 # Try key-based auth first. Fall back to sshpass if PROXMOX_PASS is set.
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5"
 if ssh $SSH_OPTS -o BatchMode=yes "${PROXMOX_USER:-root}@${NODE_IP}" exit 2>/dev/null; then
-  SSH_PREFIX=""
+  SSH_PREFIX=()
 elif [ -n "${PROXMOX_PASS:-}" ] && command -v sshpass &>/dev/null; then
-  SSH_PREFIX="sshpass -p ${PROXMOX_PASS}"
+  SSH_PREFIX=(sshpass -p "${PROXMOX_PASS}")
 else
   echo "ERROR: Cannot authenticate to $NODE_IP." >&2
   echo "  Option 1: Set up SSH key auth (recommended)" >&2
@@ -146,8 +156,8 @@ else
   exit 1
 fi
 
-RUN_NODE()  { $SSH_PREFIX ssh  $SSH_OPTS "${PROXMOX_USER:-root}@${NODE_IP}" "$@"; }
-COPY_NODE() { $SSH_PREFIX scp  $SSH_OPTS "$1" "${PROXMOX_USER:-root}@${NODE_IP}:$2"; }
+RUN_NODE()  { "${SSH_PREFIX[@]}" ssh  $SSH_OPTS "${PROXMOX_USER:-root}@${NODE_IP}" "$@"; }
+COPY_NODE() { "${SSH_PREFIX[@]}" scp  $SSH_OPTS "$1" "${PROXMOX_USER:-root}@${NODE_IP}:$2"; }
 
 # --- Upload cloud-init snippet ---
 echo "Uploading cloud-init config to $NODE_NAME..."

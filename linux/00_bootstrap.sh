@@ -54,14 +54,14 @@ fi
 # Build SSH prefix
 SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
 if [ -n "$ROOT_PASS" ] && command -v sshpass &>/dev/null; then
-  SSH_AS_ROOT="sshpass -p ${ROOT_PASS} ssh $SSH_OPTS root@${HOST_IP}"
+  SSH_AS_ROOT=(sshpass -p "${ROOT_PASS}" ssh $SSH_OPTS root@"${HOST_IP}")
 elif [ -n "$ROOT_PASS" ]; then
   echo "WARNING: password provided but sshpass is not installed." >&2
   echo "  Mac: brew install sshpass | Linux: apt install sshpass" >&2
   echo "Falling back to interactive password prompt." >&2
-  SSH_AS_ROOT="ssh $SSH_OPTS root@${HOST_IP}"
+  SSH_AS_ROOT=(ssh $SSH_OPTS root@"${HOST_IP}")
 else
-  SSH_AS_ROOT="ssh $SSH_OPTS root@${HOST_IP}"
+  SSH_AS_ROOT=(ssh $SSH_OPTS root@"${HOST_IP}")
 fi
 
 echo "========================================"
@@ -71,7 +71,7 @@ echo "========================================"
 
 # Step 1: Create user
 echo "[1/4] Creating user '$SETUP_USER'..."
-$SSH_AS_ROOT "
+"${SSH_AS_ROOT[@]}" "
   id $SETUP_USER 2>/dev/null && echo 'User already exists, skipping.' || \
   adduser --disabled-password --gecos '' $SETUP_USER
   usermod -aG sudo $SETUP_USER
@@ -79,7 +79,7 @@ $SSH_AS_ROOT "
 
 # Step 2: Passwordless sudo
 echo "[2/4] Configuring passwordless sudo..."
-$SSH_AS_ROOT "
+"${SSH_AS_ROOT[@]}" "
   echo '${SETUP_USER} ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/${SETUP_USER}-nopasswd
   chmod 440 /etc/sudoers.d/${SETUP_USER}-nopasswd
   visudo -c -f /etc/sudoers.d/${SETUP_USER}-nopasswd
@@ -87,7 +87,7 @@ $SSH_AS_ROOT "
 
 # Step 3: Upload SSH key
 echo "[3/4] Uploading SSH key..."
-$SSH_AS_ROOT "
+"${SSH_AS_ROOT[@]}" "
   mkdir -p /home/${SETUP_USER}/.ssh
   echo '${SSH_PUBLIC_KEY}' >> /home/${SETUP_USER}/.ssh/authorized_keys
   sort -u /home/${SETUP_USER}/.ssh/authorized_keys -o /home/${SETUP_USER}/.ssh/authorized_keys
@@ -98,7 +98,7 @@ $SSH_AS_ROOT "
 
 # Step 4: Harden SSH
 echo "[4/4] Hardening sshd (key-only, no root login, no passwords)..."
-$SSH_AS_ROOT "
+"${SSH_AS_ROOT[@]}" "
   sed -i 's/.*PubkeyAuthentication.*/PubkeyAuthentication yes/'   /etc/ssh/sshd_config
   sed -i 's/.*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
   sed -i 's/.*PermitRootLogin.*/PermitRootLogin no/'              /etc/ssh/sshd_config

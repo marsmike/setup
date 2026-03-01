@@ -1,0 +1,20 @@
+# n8n — workflow automation platform
+# Use with profile: dev-base
+
+description: "Self-hosted workflow automation (like Zapier)"
+port: 5678
+
+post_provision:
+  - "mkdir -p ~/n8n"
+  - >
+    docker run -d --name n8n
+    --restart unless-stopped
+    -p 5678:5678
+    -v ~/n8n:/home/node/.n8n
+    -e N8N_BASIC_AUTH_ACTIVE=true
+    -e N8N_BASIC_AUTH_USER=admin
+    -e N8N_BASIC_AUTH_PASSWORD=changeme
+    n8nio/n8n:latest
+
+notes: |
+  Access: http://<VM_IP>:5678 — user: admin / pass: changeme (change on first login)

@@ -1,0 +1,18 @@
+# RAGFlow — RAG-based document Q&A platform
+# Repo: https://github.com/infiniflow/ragflow
+# Needs 8GB+ RAM. Use with profile: ai-workbench (or dev-base at minimum).
+# Access: http://<VM_IP> after provisioning
+
+description: "RAG-based document Q&A and knowledge management"
+port: 80
+
+# These commands run on the VM after cloud-init completes
+# provision.sh SSHes to the VM IP and runs them in order
+post_provision:
+  - "mkdir -p ~/ragflow && cd ~/ragflow"
+  - "curl -fsSL https://raw.githubusercontent.com/infiniflow/ragflow/main/docker/docker-compose.yml -o docker-compose.yml"
+  - "docker compose up -d"
+
+notes: |
+  First login: visit http://<VM_IP> — create admin account on first visit.
+  Logs: ssh mike@<VM_IP> 'cd ~/ragflow && docker compose logs -f'

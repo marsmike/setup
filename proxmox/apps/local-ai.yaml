@@ -1,0 +1,19 @@
+# LocalAI — self-hosted OpenAI-compatible API
+# Repo: https://github.com/mudler/LocalAI
+# Use with profile: ai-workbench (GPU passthrough optional)
+
+description: "Self-hosted OpenAI-compatible inference API"
+port: 8080
+
+post_provision:
+  - "mkdir -p ~/localai/models"
+  - >
+    docker run -d --name localai
+    -p 8080:8080
+    -v ~/localai/models:/models
+    -e MODELS_PATH=/models
+    localai/localai:latest
+
+notes: |
+  API endpoint: http://<VM_IP>:8080/v1
+  Drop GGUF model files into ~/localai/models/ and restart container.

@@ -1,0 +1,20 @@
+# Existing VM — pve-node-01, VMID 101
+profile: ai-workbench
+app: local-ai
+
+vm:
+  id: 101
+  name: local-ai
+  node: pve-node-01
+
+hardware:
+  memory: 25000
+  cores: 8
+  disk: 96G
+
+network:
+  ip: 192.168.1.101
+  gateway: 192.168.1.1
+  netmask: 24
+  dns: 192.168.1.1
+  searchdomain: home

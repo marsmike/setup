@@ -1,0 +1,20 @@
+# Existing LXC container — pve-node-01, CTID 5001
+# NOTE: LXC containers use 'pct' not 'qm' — provision.sh does not manage these yet.
+type: lxc
+
+lxc:
+  id: 5001
+  name: pihole
+  node: pve-node-01
+
+hardware:
+  memory: 1024
+  cores: 2
+  disk: 4G
+
+network:
+  ip: 192.168.1.2
+  gateway: 192.168.1.1
+  netmask: 24
+
+notes: "DNS + ad blocking. Tags: dhcp, dns"

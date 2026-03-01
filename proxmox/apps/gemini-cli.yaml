@@ -1,0 +1,8 @@
+description: "Development VM with Gemini CLI"
+
+# These commands run on the VM after cloud-init completes
+# provision.sh SSHes to the VM IP and runs them in order
+post_provision:
+  - "git clone https://github.com/marsmike/setup.git ~/setup || true"
+  - "cd ~/setup && bash linux/01_basics.sh"
+  - "cd ~/setup && bash tools/10_ai_tools.sh"

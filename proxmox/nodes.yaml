@@ -9,11 +9,11 @@ nodes:
 
   - name: pve-node-02
     ip: 192.168.1.102
-    storage: local-lvm
+    storage: nvme
 
   - name: pve-node-03
     ip: 192.168.1.103
-    storage: local-lvm
+    storage: nvme
 
 # IPs reserved for infrastructure — never assign these to VMs
 reserved_ips:

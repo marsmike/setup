@@ -9,28 +9,28 @@ new VM with one command — or tell Claude and it'll handle the rest.
 
 ```mermaid
 graph TD
-    proxmox["proxmox/"] --> provision["provision.sh\nMain entrypoint"]
-    proxmox --> nodes["nodes.yaml\nCluster inventory"]
-    proxmox --> env[".env.example\nSecrets template"]
+    proxmox["proxmox/"] --> provision["provision.sh<br/>Main entrypoint"]
+    proxmox --> nodes["nodes.yaml<br/>Cluster inventory"]
+    proxmox --> env[".env.example<br/>Secrets template"]
 
-    proxmox --> vms["vms/\nConcrete VM instances"]
+    proxmox --> vms["vms/<br/>Concrete VM instances"]
     vms --> v1["ragflow.yaml"]
     vms --> v2["local-ai.yaml"]
     vms --> v3["pihole.yaml"]
 
-    proxmox --> profiles["profiles/\nHardware + base toolchain"]
-    profiles --> p1["dev-base.yaml\n4 cores · 8 GB · 32 GB"]
-    profiles --> p2["ai-workbench.yaml\n8 cores · 24 GB · 96 GB"]
+    proxmox --> profiles["profiles/<br/>Hardware + base toolchain"]
+    profiles --> p1["dev-base.yaml<br/>4 cores · 8 GB · 32 GB"]
+    profiles --> p2["ai-workbench.yaml<br/>8 cores · 24 GB · 96 GB"]
 
-    proxmox --> apps["apps/\nApplication stacks"]
+    proxmox --> apps["apps/<br/>Application stacks"]
     apps --> a1["ragflow.yaml"]
     apps --> a2["local-ai.yaml"]
     apps --> a3["n8n.yaml"]
 
-    proxmox --> cloudinit["cloudinit/base.yaml.tpl\nCloud-init template"]
+    proxmox --> cloudinit["cloudinit/base.yaml.tpl<br/>Cloud-init template"]
     proxmox --> scripts["scripts/"]
-    scripts --> s1["create_vm.sh\nRuns on Proxmox node"]
-    scripts --> s2["template.sh\nBuilds Ubuntu Noble template"]
+    scripts --> s1["create_vm.sh<br/>Runs on Proxmox node"]
+    scripts --> s2["template.sh<br/>Builds Ubuntu Noble template"]
 ```
 
 ---
@@ -41,15 +41,15 @@ Every VM is composed from three YAML files that merge at provision time:
 
 ```mermaid
 graph LR
-    profile["**Profile**\nprofiles/dev-base.yaml\n─────────────────\n4 cores · 8 GB RAM\n32 GB disk · nvme\nDocker · zsh · chezmoi"]
-    app["**App**\napps/ragflow.yaml\n─────────────────\ndocker-compose up -d\nport 80\nNeeds 8 GB+ RAM"]
-    instance["**VM Instance**\nvms/ragflow.yaml\n─────────────────\nVMID: 100\nNode: pve-node-01\nIP: 192.168.1.100"]
+    profile["**Profile**<br/>profiles/dev-base.yaml<br/>─────────────────<br/>4 cores · 8 GB RAM<br/>32 GB disk · nvme<br/>Docker · zsh · chezmoi"]
+    app["**App**<br/>apps/ragflow.yaml<br/>─────────────────<br/>docker-compose up -d<br/>port 80<br/>Needs 8 GB+ RAM"]
+    instance["**VM Instance**<br/>vms/ragflow.yaml<br/>─────────────────<br/>VMID: 100<br/>Node: pve-node-01<br/>IP: 192.168.1.100"]
 
     profile --> vm
     app --> vm
     instance --> vm
 
-    vm["**Concrete VM**\nragflow @ pve-node-01\n192.168.1.100:80\nAll tools pre-installed"]
+    vm["**Concrete VM**<br/>ragflow @ pve-node-01<br/>192.168.1.100:80<br/>All tools pre-installed"]
 ```
 
 **Layer 1 — Profile** defines hardware and the base toolchain (Docker, zsh,
@@ -68,17 +68,17 @@ and IP. One YAML file per live VM in `vms/`.
 ```mermaid
 flowchart TD
     start(["./proxmox/provision.sh vms/ragflow.yaml"])
-    start --> secrets["Load proxmox/.env\nValidate SSH_PUBLIC_KEY,\nUSER_PASSWORD_HASH, etc."]
-    secrets --> parse["Parse VM YAML with yq\nMerge profile + app defaults\nResolve node IP from nodes.yaml"]
-    parse --> render["Render cloudinit/base.yaml.tpl\nenvsubst with explicit var list\n→ /tmp/ragflow-cloudinit.yaml"]
+    start --> secrets["Load proxmox/.env<br/>Validate SSH_PUBLIC_KEY,<br/>USER_PASSWORD_HASH, etc."]
+    secrets --> parse["Parse VM YAML with yq<br/>Merge profile + app defaults<br/>Resolve node IP from nodes.yaml"]
+    parse --> render["Render cloudinit/base.yaml.tpl<br/>envsubst with explicit var list<br/>→ /tmp/ragflow-cloudinit.yaml"]
     render --> dryrun{{"--dry-run?"}}
-    dryrun -- yes --> printplan["Print plan + rendered cloud-init\nNo SSH, no changes"]
-    dryrun -- no --> ssh["SSH to pve-node-01\n(key auth or sshpass)"]
-    ssh --> upload["Upload cloud-init snippet\n→ /var/lib/vz/snippets/\nUpload create_vm.sh"]
-    upload --> create["Run create_vm.sh on node\nqm create · qm set\nqm cloudinit update · qm start"]
-    create --> wait["Wait ~3 min for VM to boot\ncloud-init runs:\nDocker · zsh · chezmoi · app tools"]
-    wait --> post["SSH into VM at 192.168.1.100\nRun post_provision steps\ndocker compose up -d"]
-    post --> done(["Done\nragflow ready at http://192.168.1.100"])
+    dryrun -- yes --> printplan["Print plan + rendered cloud-init<br/>No SSH, no changes"]
+    dryrun -- no --> ssh["SSH to pve-node-01<br/>(key auth or sshpass)"]
+    ssh --> upload["Upload cloud-init snippet<br/>→ /var/lib/vz/snippets/<br/>Upload create_vm.sh"]
+    upload --> create["Run create_vm.sh on node<br/>qm create · qm set<br/>qm cloudinit update · qm start"]
+    create --> wait["Wait ~3 min for VM to boot<br/>cloud-init runs:<br/>Docker · zsh · chezmoi · app tools"]
+    wait --> post["SSH into VM at 192.168.1.100<br/>Run post_provision steps<br/>docker compose up -d"]
+    post --> done(["Done<br/>ragflow ready at http://192.168.1.100"])
 ```
 
 ---

@@ -1,0 +1,19 @@
+profile: dev-base
+app: gemini-cli
+
+vm:
+  id: 102
+  name: gemini-cli
+  node: pve-node-02
+
+hardware:
+  memory: 8192
+  cores: 4
+  disk: 32G
+
+network:
+  ip: 192.168.1.111
+  gateway: 192.168.1.1
+  netmask: 24
+  dns: 192.168.1.1
+  searchdomain: home

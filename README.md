@@ -10,15 +10,15 @@ what to run and in what order.
 
 ```mermaid
 graph TD
-    repo["setup/"] --> mac["mac/\nMac bootstrap"]
-    repo --> linux["linux/\nLinux / server bootstrap"]
-    repo --> tools["tools/\nCross-platform dev tools"]
-    repo --> proxmox["proxmox/\nProxmox VM provisioning"]
+    repo["setup/"] --> mac["mac/<br/>Mac bootstrap"]
+    repo --> linux["linux/<br/>Linux / server bootstrap"]
+    repo --> tools["tools/<br/>Cross-platform dev tools"]
+    repo --> proxmox["proxmox/<br/>Proxmox VM provisioning"]
 
-    mac --> m1["00_sshkey.sh — SSH key\n01_basics.sh — Homebrew"]
-    linux --> l1["00_bootstrap.sh — one-shot server hardening\n01–03_*.sh — baseline + dotfiles + shell\n10_neovim, 11_docker_tools, 20_restic"]
-    tools --> t1["10_* — kubectl, helm, lazygit, Claude Code…\n20_* — atuin, uv, conda, coder…"]
-    proxmox --> px1["provision.sh — main entrypoint\nvms/ · profiles/ · apps/ · cloudinit/"]
+    mac --> m1["00_sshkey.sh — SSH key<br/>01_basics.sh — Homebrew"]
+    linux --> l1["00_bootstrap.sh — one-shot server hardening<br/>01–03_*.sh — baseline + dotfiles + shell<br/>10_neovim, 11_docker_tools, 20_restic"]
+    tools --> t1["10_* — kubectl, helm, lazygit, Claude Code…<br/>20_* — atuin, uv, conda, coder…"]
+    proxmox --> px1["provision.sh — main entrypoint<br/>vms/ · profiles/ · apps/ · cloudinit/"]
 ```
 
 ---

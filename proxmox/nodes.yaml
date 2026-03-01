@@ -1,0 +1,30 @@
+# Proxmox cluster inventory
+# Used by provision.sh to resolve node names to IPs and storage pools.
+
+nodes:
+  - name: pve-node-01
+    ip: 192.168.1.101
+    storage: nvme
+    notes: "Template host — ubuntu-24-04-cloud (VM 8200) lives here"
+
+  - name: pve-node-02
+    ip: 192.168.1.102
+    storage: local-lvm
+
+  - name: pve-node-03
+    ip: 192.168.1.103
+    storage: local-lvm
+
+# IP pool for new VMs (Claude scans vms/ to find the next free address)
+ip_pool:
+  start: 192.168.1.100
+  end:   192.168.1.199
+  gateway: 192.168.1.1
+  netmask: 24
+  dns: 192.168.1.1
+  searchdomain: home
+
+# VMID pool for new VMs
+vmid_pool:
+  start: 100
+  end:   899

@@ -139,7 +139,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # restic (backup tool)
 # ==============================================================================
 sudo apt install -y restic
-sudo restic self-update
+sudo restic self-update || true  # apt version may not support self-update
 
 # ==============================================================================
 # lazygit

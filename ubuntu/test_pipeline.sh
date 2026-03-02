@@ -30,8 +30,8 @@ WITH_DOTFILES=false
 FAILURES=0
 
 # Load .env so we can forward credentials into the container/VM
-if [ -f "${SCRIPT_DIR}/.env" ]; then
-  set -o allexport; source "${SCRIPT_DIR}/.env"; set +o allexport
+if [ -f "${SCRIPT_DIR}/../.env" ]; then
+  set -o allexport; source "${SCRIPT_DIR}/../.env"; set +o allexport
 fi
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'

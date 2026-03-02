@@ -116,8 +116,8 @@ bash linux/00_bootstrap.sh 192.168.1.50 --root-pass 'mypassword'
 ### 1. Copy and fill in secrets
 
 ```bash
-cp proxmox/.env.example proxmox/.env
-# Fill in: PROXMOX_PASS, SSH_PUBLIC_KEY, USER_PASSWORD_HASH, CHEZMOI_USER
+cp .env.example .env
+# Fill in: PROXMOX_PASS, SSH_PUBLIC_KEY, USER_PASSWORD_HASH, DOTFILES_REPO
 ```
 
 Generate `USER_PASSWORD_HASH`:
@@ -223,13 +223,12 @@ The repo is always the source of truth. Every VM that exists has a file in `vms/
 ## Secrets Reference
 
 ```bash
-# proxmox/.env.example — committed to git
+# .env.example — committed to git (root of repo)
 PROXMOX_USER=root
 PROXMOX_PASS=                   # Proxmox root password
 SSH_PUBLIC_KEY=                 # Your public key — paste inline
 USER_PASSWORD_HASH=             # sha-512 hash: mkpasswd -m sha-512
-CHEZMOI_USER=marsmike           # GitHub username for chezmoi dotfiles
+DOTFILES_REPO=marsmike          # GitHub username for chezmoi dotfiles
 GH_TOKEN=                       # GitHub token (for gh auth, chezmoi private repos)
-DOTFILES_REPO=                  # dotfiles repo URL
 SETUP_USER=mike                 # Username to create in VMs
 ```

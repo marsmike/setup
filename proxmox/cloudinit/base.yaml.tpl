@@ -77,7 +77,7 @@ runcmd:
       git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
     fi
     if [ ! -f "$HOME/.local/bin/chezmoi" ]; then
-      sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply ${CHEZMOI_USER}
+      sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply ${DOTFILES_REPO}
       mkdir -p $HOME/.local/bin
       [ -f "$HOME/bin/chezmoi" ] && mv $HOME/bin/chezmoi $HOME/.local/bin/chezmoi
       rm -rf $HOME/bin

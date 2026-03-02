@@ -15,6 +15,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VM_YAML="${1:-}"
 DRY_RUN="${2:-}"
 
@@ -29,10 +30,10 @@ if [ ! -f "$VM_YAML" ]; then
 fi
 
 # --- Load secrets ---
-ENV_FILE="${SCRIPT_DIR}/.env"
+ENV_FILE="${REPO_ROOT}/.env"
 if [ ! -f "$ENV_FILE" ]; then
   echo "ERROR: $ENV_FILE not found." >&2
-  echo "Run: cp ${SCRIPT_DIR}/.env.example ${SCRIPT_DIR}/.env" >&2
+  echo "Run: cp ${REPO_ROOT}/.env.example ${REPO_ROOT}/.env" >&2
   echo "Then fill in your secrets." >&2
   exit 1
 fi
@@ -43,7 +44,7 @@ set +o allexport
 SETUP_USER="${SETUP_USER:-mike}"
 
 # Validate required secrets
-for var in SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER; do
+for var in SSH_PUBLIC_KEY USER_PASSWORD_HASH DOTFILES_REPO SETUP_USER; do
   if [ -z "${!var:-}" ]; then
     echo "ERROR: $var is not set in $ENV_FILE" >&2
     exit 1
@@ -133,9 +134,9 @@ fi
 SNIPPET_NAME="${VM_NAME}-cloudinit.${SNIPPET_EXT}"
 RENDERED_FILE="/tmp/${SNIPPET_NAME}"
 
-export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH CHEZMOI_USER SETUP_USER VM_IP VM_NETMASK VM_GATEWAY VM_DNS
+export VM_NAME VM_SEARCHDOMAIN SSH_PUBLIC_KEY USER_PASSWORD_HASH DOTFILES_REPO SETUP_USER VM_IP VM_NETMASK VM_GATEWAY VM_DNS
 # IMPORTANT: explicit variable list prevents envsubst from eating $HOME etc.
-envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${CHEZMOI_USER} ${SETUP_USER} ${VM_IP} ${VM_NETMASK} ${VM_GATEWAY} ${VM_DNS}' \
+envsubst '${VM_NAME} ${VM_SEARCHDOMAIN} ${SSH_PUBLIC_KEY} ${USER_PASSWORD_HASH} ${DOTFILES_REPO} ${SETUP_USER} ${VM_IP} ${VM_NETMASK} ${VM_GATEWAY} ${VM_DNS}' \
   < "$TPL_FILE" > "$RENDERED_FILE"
 
 # --- Summary ---

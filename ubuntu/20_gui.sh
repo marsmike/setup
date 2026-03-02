@@ -1,6 +1,6 @@
 #!/bin/bash
 # GUI applications
-# Installs: flatpak (+ flathub), ghostty, Obsidian, Discord, Google Chrome, Firefox
+# Installs: flatpak (+ flathub), ghostty, Obsidian, Discord, WezTerm, Google Chrome, Firefox
 set -euo pipefail
 
 if [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
@@ -21,6 +21,7 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 flatpak install -y flathub org.ghostty.ghostty || true
 flatpak install -y flathub md.obsidian.Obsidian || true
 flatpak install -y flathub com.discordapp.Discord || true
+flatpak install -y flathub org.wezfurlong.wezterm || true
 
 # --- Google Chrome (deb → dpkg; Google apt repo for updates) ---
 if ! command -v google-chrome-stable &>/dev/null && ! command -v google-chrome &>/dev/null; then
@@ -46,4 +47,4 @@ else
 fi
 
 echo ""
-echo "GUI apps installed: ghostty (flatpak), Obsidian (flatpak), Discord (flatpak), Chrome, Firefox"
+echo "GUI apps installed: ghostty (flatpak), Obsidian (flatpak), Discord (flatpak), WezTerm (flatpak), Chrome, Firefox"

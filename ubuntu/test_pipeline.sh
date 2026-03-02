@@ -9,7 +9,7 @@
 #   bash test_pipeline.sh                    # auto-detect backend
 #   bash test_pipeline.sh --backend docker   # force Docker
 #   bash test_pipeline.sh --backend quickemu # force quickemu
-#   bash test_pipeline.sh --with-dotfiles    # also run 02_dotfiles.sh (needs .env)
+#   bash test_pipeline.sh --with-dotfiles    # also run 03_dotfiles.sh (needs .env)
 #   bash test_pipeline.sh --keep             # leave container/VM running after tests
 #   bash test_pipeline.sh --clean            # destroy previous environment first
 set -euo pipefail
@@ -124,7 +124,7 @@ if [ "$BACKEND" = "docker" ]; then
     [ -n "${GH_TOKEN:-}" ] || { fail "--with-dotfiles requires GH_TOKEN in .env"; exit 1; }
     HAS_ENV=true
   else
-    info "Skipping 02_dotfiles.sh (pass --with-dotfiles to include it)"
+    info "Skipping 03_dotfiles.sh (pass --with-dotfiles to include it)"
     HAS_ENV=false
   fi
 
@@ -292,7 +292,7 @@ USERDATA
     [ -n "${GH_TOKEN:-}" ] || { fail "--with-dotfiles requires GH_TOKEN in .env"; exit 1; }
     HAS_ENV=true
   else
-    info "Skipping 02_dotfiles.sh (pass --with-dotfiles to include it)"
+    info "Skipping 03_dotfiles.sh (pass --with-dotfiles to include it)"
     HAS_ENV=false
   fi
 
@@ -327,9 +327,9 @@ USERDATA
 fi
 
 # ── Run pipeline ──────────────────────────────────────────────────────────────
-run_phase "01_basics_linux.sh" "Phase 1: basics"
-$WITH_DOTFILES && run_phase "02_dotfiles.sh" "Phase 1: dotfiles"
-run_phase "03_shell.sh" "Phase 1: shell (oh-my-zsh + powerlevel10k)"
+run_phase "01_basics.sh" "Phase 1: basics"
+run_phase "02_shell.sh" "Phase 2: shell (oh-my-zsh + powerlevel10k)"
+$WITH_DOTFILES && run_phase "03_dotfiles.sh" "Phase 3: dotfiles"
 
 # ── Verify ────────────────────────────────────────────────────────────────────
 header "Verifying installation"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 1 — Core (every machine)
+# Phase 3 — Dotfiles (chezmoi + tpm)
 # Installs chezmoi and applies dotfiles (repo set via DOTFILES_REPO, defaults to marsmike/dotfiles).
 # Also bootstraps tmux plugin manager (tpm).
 #
@@ -44,17 +44,6 @@ fi
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/marsmike/dotfiles.git}"
 echo "Installing chezmoi and applying dotfiles from ${DOTFILES_REPO}..."
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply --force "${DOTFILES_REPO}"
-
-# Ensure nvm init survives in .zshrc after chezmoi applies dotfiles
-if [ -f "${HOME}/.zshrc" ] && ! grep -q 'NVM_DIR' "${HOME}/.zshrc"; then
-  cat >> "${HOME}/.zshrc" << 'EOF'
-
-# nvm (Node Version Manager)
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-EOF
-fi
 
 echo ""
 echo "Loading Tmux Plugin Manager (tpm)..."

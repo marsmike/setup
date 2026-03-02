@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 1 — Core (every machine)
+# Phase 2 — Shell (oh-my-zsh + zsh as default)
 # Installs oh-my-zsh, powerlevel10k theme, and essential plugins.
 # Idempotent — safe to re-run.
 set -euo pipefail

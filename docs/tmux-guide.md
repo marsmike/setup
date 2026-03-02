@@ -6,9 +6,9 @@ Your config lives at `~/.config/tmux/tmux.conf` (and `tmux.keybinds.conf`), mana
 
 ## Core Concept: Prefix Key
 
-**Your prefix is `Ctrl+A`** (not the default `Ctrl+B`).
+**Your prefix is `Ctrl+B`** (tmux default).
 
-Most tmux commands: press `Ctrl+A`, release, then press the next key.
+Most tmux commands: press `Ctrl+B`, release, then press the next key.
 The most frequent actions (pane/window navigation) need **no prefix at all**.
 
 ### Mental Model
@@ -35,15 +35,15 @@ These work instantly, no prefix key needed:
 
 | Key | Action |
 |-----|--------|
-| `Alt+h` | focus pane left |
-| `Alt+j` | focus pane down |
-| `Alt+k` | focus pane up |
-| `Alt+l` | focus pane right |
+| `Ctrl+h` | focus pane left (vim-tmux-navigator) |
+| `Ctrl+j` | focus pane down |
+| `Ctrl+k` | focus pane up |
+| `Ctrl+l` | focus pane right |
 | `Alt+H` (Alt+Shift+H) | previous window |
 | `Alt+L` (Alt+Shift+L) | next window |
 
-> **Note:** Requires Ghostty's `macos-option-as-alt = left` (already set).
-> No conflicts with Magnet (`Ctrl+Option`), WhisprFlow (`Fn`), ScreenFloat (`Cmd+Shift`), or Nextcloud.
+> **Note:** `Ctrl+hjkl` navigation is shared with Neovim splits — vim-tmux-navigator
+> makes it seamless across both tmux panes and nvim windows.
 
 ---
 
@@ -52,7 +52,7 @@ These work instantly, no prefix key needed:
 | Key | Action |
 |-----|--------|
 | `prefix + o` | **SessionX** — fuzzy session switcher with preview (your main session tool) |
-| `prefix + S` | choose session from list |
+| `prefix + s` | choose session from list |
 | `prefix + d` | detach from current session (session keeps running) |
 | `tmux new -s name` | create named session from shell |
 | `tmux attach -t name` | attach to existing session |
@@ -78,7 +78,7 @@ Status bar is at the **top**.
 |-----|--------|
 | `Alt+H` / `Alt+L` | previous / next window **(no prefix)** |
 | `prefix + c` | new window (opens in current path) |
-| `prefix + a` | last window (toggle between two recent) |
+| `prefix + l` | last window (toggle between two recent) |
 | `prefix + w` | list all windows |
 | `prefix + r` | rename current window |
 
@@ -99,7 +99,7 @@ Both open in the current working directory.
 
 | Key | Action |
 |-----|--------|
-| `Alt+h/j/k/l` | move focus between panes **(no prefix, vim-style)** |
+| `Ctrl+h/j/k/l` | move focus between panes **(no prefix, vim-style)** |
 
 ### Managing Panes
 
@@ -107,9 +107,10 @@ Both open in the current working directory.
 |-----|--------|
 | `prefix + z` | zoom/unzoom current pane (fullscreen toggle) |
 | `prefix + x` | kill current pane |
-| `prefix + X` | swap pane with next |
-| `prefix + P` | toggle pane border status bar |
-| `prefix + *` | **synchronize panes** — type in all panes simultaneously |
+| `prefix + {` | swap pane with previous |
+| `prefix + }` | swap pane with next |
+| `prefix + q` | show pane numbers (press number to jump) |
+| `prefix + Space` | cycle through layouts |
 
 ### Resize Panes
 
@@ -141,7 +142,7 @@ Hold `prefix` then tap repeatedly (the `-r` flag allows repeat without re-pressi
 
 | Key | Action |
 |-----|--------|
-| `Alt+h/j/k/l` | navigate panes |
+| `Ctrl+h/j/k/l` | navigate panes (shared with nvim) |
 | `Alt+H` / `Alt+L` | prev/next window |
 | `Ctrl+N` | open **nvim popup** → `:ObsidianNew` (new note) |
 | `Ctrl+Q` | open **nvim popup** → `:ObsidianSearch` (search notes, 90%×85% popup) |
@@ -177,7 +178,7 @@ Hold `prefix` then tap repeatedly (the `-r` flag allows repeat without re-pressi
 
 ## Status Bar
 
-Status bar is at the **top**. Layout (Catppuccin theme):
+Status bar is at the **top**. Layout (Catppuccin Latte theme):
 
 ```
 [session name]   win1  WIN2  win3   ...   [directory]  [meetings]  [HH:MM]
@@ -190,7 +191,7 @@ Status bar is at the **top**. Layout (Catppuccin theme):
 
 ### Meetings Widget
 
-The status bar shows your **next calendar meeting** (via `icalBuddy`, macOS only).
+The status bar shows your **next calendar meeting** (via `icalBuddy` — **macOS only**).
 - Shows meeting title + time when within 10 minutes
 - Shows a popup alert 10 seconds before
 - Skips solo events (< 2 attendees)
@@ -209,7 +210,7 @@ The status bar shows your **next calendar meeting** (via `icalBuddy`, macOS only
 | `fcsonline/tmux-thumbs` | Hint-based text picker (`prefix + Space`) |
 | `sainnhe/tmux-fzf` | Fuzzy finder for tmux objects (`prefix + F`) |
 | `wfxr/tmux-fzf-url` | URL picker from pane content (`prefix + u`) |
-| `omerxx/catppuccin-tmux` | Catppuccin theme (forked, includes meetings script) |
+| `omerxx/catppuccin-tmux` | Catppuccin Latte theme (forked, includes meetings script) |
 | `omerxx/tmux-sessionx` | Session manager with fzf preview (`prefix + o`) |
 
 ### Managing Plugins
@@ -225,25 +226,25 @@ prefix + Alt+U    remove plugins not in config
 ## Quick Reference Card
 
 ```
-NO PREFIX (instant)        WINDOWS (prefix+key)       SPLITS (prefix+key)
-Alt+hjkl  move panes       c  new window              -  split ─ (horizontal)
-Alt+H     prev window       a  last window             \  split │ (vertical)
-Alt+L     next window       r  rename
-                            w  list                   PANES (prefix+key)
-SESSIONS (prefix+key)                                 x  kill pane
-o  SessionX              RESIZE (prefix, repeatable)   z  zoom toggle
-S  list sessions         H/J/K/L  resize 5 cols/rows   X  swap pane
-d  detach                                              *  sync all
+NO PREFIX (instant)          WINDOWS (prefix+key)       SPLITS (prefix+key)
+Ctrl+hjkl  move panes        c  new window              -  split ─ (horizontal)
+Alt+H      prev window        l  last window             \  split │ (vertical)
+Alt+L      next window        r  rename
+                              w  list                   PANES (prefix+key)
+SESSIONS (prefix+key)                                   x  kill pane
+o  SessionX               RESIZE (prefix, repeatable)   z  zoom toggle
+s  list sessions          H/J/K/L  resize 5 cols/rows   {  swap prev
+d  detach                                               }  swap next
 
-COPY MODE                GLOBAL (no prefix)
-prefix+[  enter          Ctrl+N  Obsidian new note
-v         select         Ctrl+Q  Obsidian search
+COPY MODE                 GLOBAL (no prefix)
+prefix+[  enter           Ctrl+N  Obsidian new note
+v         select          Ctrl+Q  Obsidian search
 y         yank
-q         quit           MISC (prefix+key)
-                         R  reload config
-                         u  pick URL
-                         Space  thumbs (hint copy)
-                         F  tmux-fzf menu
+q         quit            MISC (prefix+key)
+                          R  reload config
+                          u  pick URL
+                          Space  thumbs (hint copy)
+                          F  tmux-fzf menu
 ```
 
 ---
@@ -251,7 +252,6 @@ q         quit           MISC (prefix+key)
 ## Tips
 
 - **SSH + sessions**: `tmux new -s project` on the remote host. Detach with `prefix+d`. Reconnect with `tmux attach -t project`. Sessions survive network drops.
-- **Sync panes** (`prefix + *`): useful for running the same command on multiple servers at once.
 - **Zoom** (`prefix + z`): temporarily fullscreen a pane. Press again to restore splits.
 - **ObsidianNew** (`Ctrl+N`): works from anywhere — opens a floating nvim window to take a quick note without leaving your current context.
-- **Alt key**: Uses Left Option via Ghostty's `macos-option-as-alt = left`. Right Option still types special characters (é, ü, etc.).
+- **Pane nav in nvim**: `Ctrl+hjkl` moves between both tmux panes and nvim splits transparently. You never need to think about which one you're in.

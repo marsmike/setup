@@ -58,17 +58,8 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${SYNTAX_DIR}"
 fi
 
-# --- ensure history file exists (mcfly/atuin error if it's missing) ---
+# --- ensure history file exists (atuin error if it's missing) ---
 touch "${HOME}/.zsh_history"
-
-# --- guard mcfly in .zshrc if present ---
-# Dotfiles sometimes include a bare mcfly eval that errors when mcfly isn't
-# installed. Replace with a guarded form so zsh starts cleanly regardless.
-if [ -f "${HOME}/.zshrc" ] && grep -q '^eval "\$(mcfly init zsh)"' "${HOME}/.zshrc"; then
-  echo "Guarding mcfly in .zshrc (skips silently if mcfly not installed)..."
-  sed -i.bak 's|^eval "\$(mcfly init zsh)"|command -v mcfly \&>/dev/null \&\& eval "$(mcfly init zsh)"|' \
-    "${HOME}/.zshrc" && rm -f "${HOME}/.zshrc.bak"
-fi
 
 # --- set zsh as default shell ---
 ZSH_BIN="$(command -v zsh || echo "")"

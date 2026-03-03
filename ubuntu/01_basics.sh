@@ -20,8 +20,8 @@ sudo apt -y install \
   btop htop gh vim wget \
   python3 python3-pip python3-venv \
   zoxide ncdu tldr httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
-  eza ripgrep fd-find ranger \
-  git-delta direnv hyperfine lnav \
+  ripgrep fd-find ranger \
+  direnv hyperfine lnav \
   "$LIBFUSE"
 
 # On Ubuntu, bat is installed as 'batcat' — create a user-level symlink

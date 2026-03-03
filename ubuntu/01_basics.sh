@@ -2,7 +2,21 @@
 # Phase 1 — Packages (Ubuntu/Debian/Mint)
 # Installs baseline packages and universal CLI tools.
 # Run before any other phase scripts.
-set -euo pipefail
+set -uo pipefail
+
+# Helper for authenticated GitHub API calls
+gh_api() {
+  if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+    curl -H "Authorization: token $(gh auth token)" -fsSL "https://api.github.com/$1"
+  else
+    curl -fsSL "https://api.github.com/$1"
+  fi
+}
+
+# Error logging
+log_error() {
+  echo "ERROR: $1" >&2
+}
 
 if ! command -v apt &>/dev/null; then
   echo "ERROR: apt not found — this script requires Ubuntu/Debian/Mint." >&2
@@ -33,16 +47,23 @@ mkdir -p ~/.local/bin
 
 # Docker Engine (official repo + compose plugin)
 if ! command -v docker &>/dev/null; then
-  curl -fsSL https://get.docker.com | sh
-  sudo usermod -aG docker "$USER"
+  if curl -fsSL https://get.docker.com 2>/dev/null | sh; then
+    sudo usermod -aG docker "$USER"
+    echo "Docker installed successfully"
+  else
+    log_error "Failed to install Docker (download or installation failed)"
+  fi
 fi
 
 # glow (Markdown renderer — Charm apt repo)
 if ! command -v glow &>/dev/null; then
   sudo mkdir -p /etc/apt/keyrings
-  curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
-  sudo apt update && sudo apt install -y glow
+  if curl -fsSL https://repo.charm.sh/apt/gpg.key 2>/dev/null | sudo gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg; then
+    echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+    sudo apt update && sudo apt install -y glow
+  else
+    log_error "Failed to add Charm repository (GPG key download failed)"
+  fi
 fi
 
 # ==============================================================================
@@ -51,28 +72,46 @@ fi
 
 # Install nvm and latest Node LTS
 if [ ! -d "$HOME/.nvm" ]; then
-  NVM_VER=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep -oP '"tag_name": "\K[^"]+')
-  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VER}/install.sh" | bash
+  NVM_VER=$(gh_api repos/nvm-sh/nvm/releases/latest | grep -oP '"tag_name": "\K[^"]+')
+  if curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VER}/install.sh" 2>/dev/null | bash; then
+    echo "nvm installed successfully"
+  else
+    log_error "Failed to install nvm (download or installation failed)"
+  fi
 fi
 export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm install --lts
-nvm alias default 'lts/*'
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  \. "$NVM_DIR/nvm.sh"
+  if nvm install --lts; then
+    nvm alias default 'lts/*' || log_error "Failed to set default node alias"
+    echo "Node LTS installed successfully"
+  else
+    log_error "Failed to install Node LTS (nvm download failed, possibly 403 error)"
+  fi
+else
+  log_error "nvm.sh not found - nvm installation may have failed"
+fi
 
 # yq (mikefarah — YAML processor)
 if ! command -v yq &>/dev/null; then
-  sudo curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" \
-    -o /usr/local/bin/yq && sudo chmod +x /usr/local/bin/yq || echo "Failed to install yq"
+  if sudo curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" \
+    -o /usr/local/bin/yq 2>/dev/null && sudo chmod +x /usr/local/bin/yq; then
+    echo "yq installed successfully"
+  else
+    log_error "Failed to install yq (HTTP error or network issue)"
+  fi
 fi
 
 # watchexec (trigger scripts on file changes)
 if ! command -v watchexec &>/dev/null; then
   TMP=$(mktemp -d)
-  WATCHEXEC_VER=$(curl -fsSL https://api.github.com/repos/watchexec/watchexec/releases/latest | grep -oP '"tag_name": "v\K[^"]+')
+  WATCHEXEC_VER=$(gh_api repos/watchexec/watchexec/releases/latest | grep -oP '"tag_name": "v\K[^"]+')
   if curl -fsSL "https://github.com/watchexec/watchexec/releases/latest/download/watchexec-${WATCHEXEC_VER}-x86_64-unknown-linux-musl.tar.xz" \
-    | tar -xJf - -C "$TMP"; then
+    2>/dev/null | tar -xJf - -C "$TMP" 2>/dev/null; then
     sudo install "$(find "$TMP" -name watchexec -type f)" /usr/local/bin/watchexec
+  else
+    log_error "Failed to install watchexec (download or extraction failed)"
   fi
   rm -rf "$TMP"
 fi
@@ -81,8 +120,10 @@ fi
 if ! command -v csvlens &>/dev/null; then
   TMP=$(mktemp -d)
   if curl -fsSL "https://github.com/YS-L/csvlens/releases/latest/download/csvlens-x86_64-unknown-linux-musl.tar.xz" \
-    | tar -xJf - -C "$TMP"; then
+    2>/dev/null | tar -xJf - -C "$TMP" 2>/dev/null; then
     sudo install "$(find "$TMP" -name csvlens -type f)" /usr/local/bin/csvlens
+  else
+    log_error "Failed to install csvlens (download or extraction failed)"
   fi
   rm -rf "$TMP"
 fi
@@ -91,48 +132,67 @@ fi
 if ! command -v models &>/dev/null; then
   TMP=$(mktemp -d)
   if curl -fsSL "https://github.com/arimxyer/models/releases/latest/download/models-x86_64-unknown-linux-gnu.tar.gz" \
-    | tar -xzf - -C "$TMP"; then
+    2>/dev/null | tar -xzf - -C "$TMP" 2>/dev/null; then
     sudo install "$(find "$TMP" -name models -type f)" /usr/local/bin/models
+  else
+    log_error "Failed to install models (download or extraction failed)"
   fi
   rm -rf "$TMP"
 fi
 
 # just (command runner)
 if ! command -v just &>/dev/null; then
-  curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+  if curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh 2>/dev/null | bash -s -- --to ~/.local/bin; then
+    echo "just installed successfully"
+  else
+    log_error "Failed to install just (download or installation failed)"
+  fi
 fi
 
 # sops (secret encryption)
 if ! command -v sops &>/dev/null; then
-  SOPS_VER=$(curl -sL "https://api.github.com/repos/getsops/sops/releases/latest" \
+  SOPS_VER=$(gh_api repos/getsops/sops/releases/latest \
     | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' EXIT
-  curl -fsSL "https://github.com/getsops/sops/releases/download/v${SOPS_VER}/sops-v${SOPS_VER}.linux.amd64" \
-    -o "$TMP/sops"
-  install "$TMP/sops" ~/.local/bin/sops
+  if curl -fsSL "https://github.com/getsops/sops/releases/download/v${SOPS_VER}/sops-v${SOPS_VER}.linux.amd64" \
+    -o "$TMP/sops" 2>/dev/null && install "$TMP/sops" ~/.local/bin/sops; then
+    echo "sops installed successfully"
+  else
+    log_error "Failed to install sops (download or installation failed)"
+  fi
   trap - EXIT; rm -rf "$TMP"
 fi
 
 # ollama (local LLMs)
 if ! command -v ollama &>/dev/null; then
-  curl -fsSL https://ollama.com/install.sh | sh
+  if curl -fsSL https://ollama.com/install.sh 2>/dev/null | sh; then
+    echo "ollama installed successfully"
+  else
+    log_error "Failed to install ollama (download or installation failed)"
+  fi
 fi
 
 # ==============================================================================
 # Neovim (AppImage → ~/.local/bin/nvim)
 # ==============================================================================
-NVIM_VER=$(curl -fsSL https://api.github.com/repos/neovim/neovim/releases/latest \
+NVIM_VER=$(gh_api repos/neovim/neovim/releases/latest \
   | grep -oP '"tag_name": "\K[^"]+')
-curl -fsSL "https://github.com/neovim/neovim/releases/download/${NVIM_VER}/nvim-linux-x86_64.appimage" \
-  -o ~/.local/bin/nvim
-chmod u+x ~/.local/bin/nvim
-echo "Neovim ${NVIM_VER} installed at ~/.local/bin/nvim"
+if curl -fsSL "https://github.com/neovim/neovim/releases/download/${NVIM_VER}/nvim-linux-x86_64.appimage" \
+  -o ~/.local/bin/nvim 2>/dev/null && chmod u+x ~/.local/bin/nvim; then
+  echo "Neovim ${NVIM_VER} installed at ~/.local/bin/nvim"
+else
+  log_error "Failed to install Neovim (download failed)"
+fi
 
 # ==============================================================================
 # uv (Python package manager)
 # ==============================================================================
-curl -LsSf https://astral.sh/uv/install.sh | sh
+if curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | sh; then
+  echo "uv installed successfully"
+else
+  log_error "Failed to install uv (download or installation failed)"
+fi
 export PATH="$HOME/.local/bin:$PATH"
 
 # ==============================================================================
@@ -144,21 +204,29 @@ sudo restic self-update || true  # apt version may not support self-update
 # ==============================================================================
 # lazygit
 # ==============================================================================
-LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
+LAZYGIT_VERSION=$(gh_api repos/jesseduffield/lazygit/releases/latest \
   | grep -Po '"tag_name": "v\K[^"]*')
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-curl -Lo "$TMP/lazygit.tar.gz" \
-  "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-tar xf "$TMP/lazygit.tar.gz" -C "$TMP" lazygit
-install "$TMP/lazygit" ~/.local/bin/lazygit
+if curl -Lo "$TMP/lazygit.tar.gz" \
+  "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" 2>/dev/null \
+  && tar xf "$TMP/lazygit.tar.gz" -C "$TMP" lazygit 2>/dev/null \
+  && install "$TMP/lazygit" ~/.local/bin/lazygit; then
+  echo "lazygit installed successfully"
+else
+  log_error "Failed to install lazygit (download or extraction failed)"
+fi
 trap - EXIT
 rm -rf "$TMP"
 
 # ==============================================================================
 # atuin (shell history — binary only; shell integration managed by dotfiles)
 # ==============================================================================
-curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+if curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh 2>/dev/null | sh; then
+  echo "atuin installed successfully"
+else
+  log_error "Failed to install atuin (download or installation failed)"
+fi
 
 # ==============================================================================
 # Nerd Fonts (JetBrainsMono + Meslo)
@@ -168,14 +236,17 @@ mkdir -p "${FONT_DIR}"
 install_nerd_font() {
   local font="$1"
   local version
-  version=$(curl -sL "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest" \
+  version=$(gh_api repos/ryanoasis/nerd-fonts/releases/latest \
     | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
   echo "Installing ${font} Nerd Font ${version}..."
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' RETURN
-  curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${version}/${font}.tar.xz" \
-    -o "$TMP/${font}.tar.xz"
-  tar -xf "$TMP/${font}.tar.xz" -C "${FONT_DIR}"
+  if curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${version}/${font}.tar.xz" \
+    -o "$TMP/${font}.tar.xz" 2>/dev/null && tar -xf "$TMP/${font}.tar.xz" -C "${FONT_DIR}" 2>/dev/null; then
+    echo "${font} Nerd Font installed successfully"
+  else
+    log_error "Failed to install ${font} Nerd Font (download or extraction failed)"
+  fi
 }
 install_nerd_font "JetBrainsMono"
 install_nerd_font "Meslo"
@@ -185,9 +256,13 @@ fc-cache -fv
 # Claude Code
 # ==============================================================================
 echo "Installing Claude Code..."
-curl -fsSL https://claude.ai/install.sh | bash
-export PATH="$HOME/.local/bin:$PATH"
-echo "Claude Code $(claude --version) installed."
+if curl -fsSL https://claude.ai/install.sh 2>/dev/null | bash; then
+  export PATH="$HOME/.local/bin:$PATH"
+  echo "Claude Code $(claude --version) installed."
+else
+  log_error "Failed to install Claude Code (download or installation failed)"
+  export PATH="$HOME/.local/bin:$PATH"
+fi
 # Register personal plugin marketplace (idempotent; chezmoi settings.json is authoritative)
 SETTINGS_FILE="${HOME}/.claude/settings.json"
 if [ -f "${SETTINGS_FILE}" ] && jq -e '.extraKnownMarketplaces."mike-plugins"' "${SETTINGS_FILE}" &>/dev/null; then

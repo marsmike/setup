@@ -22,7 +22,7 @@ else
     rm -rf "${ZSH_DIR}"
   fi
   echo "Installing oh-my-zsh..."
-  RUNZSH=no KEEP_ZSHRC=yes \
+  RUNZSH=no KEEP_ZSHRC=yes CHSH=no \
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
   # Restore any pre-existing custom plugins/themes
   if [ -d /tmp/omz-custom-backup ]; then

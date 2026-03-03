@@ -70,24 +70,8 @@ if [ -n "${ZSH_BIN}" ] && [ "${SHELL}" != "${ZSH_BIN}" ]; then
   elif chsh -s "${ZSH_BIN}" 2>/dev/null; then
     echo "Default shell changed to zsh via chsh."
   else
-    echo "NOTE: Could not set default shell automatically (LDAP/Kerberos environment?)."
-    echo "Adding auto-exec workaround to ~/.bashrc..."
-
-    # Add auto-exec zsh snippet to .bashrc if not already present
-    BASHRC="${HOME}/.bashrc"
-    if ! grep -q "Auto-switch to zsh" "${BASHRC}" 2>/dev/null; then
-      cat >> "${BASHRC}" <<'EOF'
-
-# Auto-switch to zsh (LDAP-managed shell workaround)
-if [ -n "$BASH_VERSION" ] && [ -z "$ZSH_VERSION" ] && command -v zsh &>/dev/null; then
-  export SHELL=$(command -v zsh)
-  exec zsh
-fi
-EOF
-      echo "Workaround added to ~/.bashrc — zsh will launch automatically."
-    else
-      echo "Workaround already present in ~/.bashrc."
-    fi
+    echo "NOTE: Could not set default shell (LDAP/Kerberos environment?)."
+    echo "Your dotfiles include an auto-exec workaround — zsh will launch automatically."
   fi
 elif [ -z "${ZSH_BIN}" ]; then
   echo "NOTE: zsh is not installed or not in PATH. Skipping shell change."

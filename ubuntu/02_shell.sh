@@ -67,7 +67,7 @@ if [ -n "${ZSH_BIN}" ] && [ "${SHELL}" != "${ZSH_BIN}" ]; then
   echo "Setting zsh as default shell..."
   if sudo -n usermod -s "${ZSH_BIN}" "${USER}" 2>/dev/null; then
     echo "Default shell changed to zsh."
-  elif chsh -s "${ZSH_BIN}" 2>/dev/null; then
+  elif timeout 2 chsh -s "${ZSH_BIN}" </dev/null >/dev/null 2>&1; then
     echo "Default shell changed to zsh via chsh."
   else
     echo "NOTE: Could not set default shell (LDAP/Kerberos environment?)."

@@ -58,6 +58,31 @@ else
   git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${SYNTAX_DIR}"
 fi
 
+# --- Ghostty terminfo (prevents repeating characters over SSH) ---
+if ! infocmp xterm-ghostty &>/dev/null; then
+  echo "Installing Ghostty terminfo..."
+  TMP=$(mktemp -d)
+  trap 'rm -rf "$TMP"' RETURN
+  curl -fsSL "https://github.com/ghostty-org/ghostty/raw/main/src/terminfo/ghostty.terminfo" \
+    -o "$TMP/ghostty.terminfo" 2>/dev/null \
+    || curl -fsSL "https://ghostty.org/terminfo/ghostty.terminfo" \
+      -o "$TMP/ghostty.terminfo" 2>/dev/null
+  if [ -s "$TMP/ghostty.terminfo" ]; then
+    tic -x "$TMP/ghostty.terminfo"
+    echo "Ghostty terminfo installed."
+  else
+    # Fallback: write a minimal terminfo entry
+    cat > "$TMP/ghostty.terminfo" <<'TERMINFO'
+xterm-ghostty|ghostty|Ghostty,
+	use=xterm-256color,
+TERMINFO
+    tic -x "$TMP/ghostty.terminfo"
+    echo "Ghostty terminfo installed (minimal fallback)."
+  fi
+else
+  echo "Ghostty terminfo already installed, skipping."
+fi
+
 # --- ensure history file exists (atuin error if it's missing) ---
 touch "${HOME}/.zsh_history"
 

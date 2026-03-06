@@ -152,7 +152,7 @@ Mermaid diagrams of the provisioning flow, VM model, and bootstrap sequence.
 | `tools/10_helm.sh` | Helm 3 (official installer) | ✓ | ✓ |
 | `tools/10_k3d.sh` | k3d — k3s in Docker | ✓ | ✓ |
 | `tools/10_claude.sh` | Claude Code CLI (native installer) | ✓ | ✓ |
-| `tools/10_ai_tools.sh` | Gemini CLI, GH Copilot CLI, Pi | ✓ | ✓ |
+| `tools/10_ai_tools.sh` | Gemini CLI, Codex CLI, GH Copilot CLI, Pi | ✓ | ✓ |
 | `tools/10_llm_tools.sh` | llm, files-to-prompt, ttok, strip-tags, aider | ✓ | ✓ |
 | `tools/20_atuin.sh` | atuin shell history (replaces mcfly) | ✓ | ✓ |
 | `tools/20_uv.sh` | uv — fast Python package + project manager | ✓ | ✓ |
@@ -201,7 +201,7 @@ bash mac/01_basics.sh
 | Data | `jq` `yq` `glow` `lnav` `csvlens` `jless` `tldr` |
 | Dev workflow | `git-delta` `direnv` `watchexec` |
 | Network | `httpie` `rsync` |
-| AI / LLM | `models` `llmfit` |
+| AI / LLM | `models` `llmfit` `gemini-cli` `codex` |
 | Terminal extras | `taproom` `timg` |
 | Runtime | Node.js LTS (via nvm) |
 
@@ -443,7 +443,7 @@ After installing, run `claude` to get started.
 
 ### `tools/10_ai_tools.sh` — AI coding assistants
 
-Installs Gemini CLI, GitHub Copilot CLI, and Pi. Requires `nodejs` + `npm`
+Installs Gemini CLI, OpenAI Codex CLI, GitHub Copilot CLI, and Pi. Requires `nodejs` + `npm`
 and `gh` (both included in the Phase 1 basics scripts).
 
 ```bash
@@ -453,6 +453,7 @@ bash tools/10_ai_tools.sh
 | Tool | Command | Source |
 |------|---------|--------|
 | Gemini CLI | `gemini` | Google — `@google/gemini-cli` |
+| OpenAI Codex CLI | `codex` | OpenAI — `@openai/codex` |
 | GitHub Copilot CLI | `gh copilot` | `gh extension install github/gh-copilot` |
 | Pi coding agent | `pi` | badlogic — `@mariozechner/pi-coding-agent` |
 

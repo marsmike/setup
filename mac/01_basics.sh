@@ -32,9 +32,9 @@ export NVM_DIR="$HOME/.nvm"
 nvm install --lts
 nvm alias default 'lts/*'
 
-brew install bun yt-dlp
+brew install bun yt-dlp gemini-cli
 
-brew install --cask ghostty
+brew install --cask ghostty codex
 
 echo ""
 echo "Note: Docker Desktop must be installed manually from https://www.docker.com/products/docker-desktop/"

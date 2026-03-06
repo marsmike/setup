@@ -253,6 +253,29 @@ install_nerd_font "Meslo"
 fc-cache -fv
 
 # ==============================================================================
+# bun (JavaScript runtime / bundler)
+# ==============================================================================
+if ! command -v bun &>/dev/null; then
+  if curl -fsSL https://bun.sh/install 2>/dev/null | bash; then
+    echo "bun installed successfully"
+  else
+    log_error "Failed to install bun (download or installation failed)"
+  fi
+fi
+
+# ==============================================================================
+# yt-dlp (YouTube/media downloader)
+# ==============================================================================
+if ! command -v yt-dlp &>/dev/null; then
+  if curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+    -o ~/.local/bin/yt-dlp 2>/dev/null && chmod +x ~/.local/bin/yt-dlp; then
+    echo "yt-dlp installed successfully"
+  else
+    log_error "Failed to install yt-dlp (download or installation failed)"
+  fi
+fi
+
+# ==============================================================================
 # Claude Code
 # ==============================================================================
 echo "Installing Claude Code..."

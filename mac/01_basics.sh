@@ -32,6 +32,8 @@ export NVM_DIR="$HOME/.nvm"
 nvm install --lts
 nvm alias default 'lts/*'
 
+brew install bun yt-dlp
+
 brew install --cask ghostty
 
 echo ""

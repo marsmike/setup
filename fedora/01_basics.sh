@@ -92,4 +92,20 @@ if ! command -v models &>/dev/null; then
   rm -rf "$TMP"
 fi
 
+# ==============================================================================
+# bun (JavaScript runtime / bundler)
+# ==============================================================================
+if ! command -v bun &>/dev/null; then
+  curl -fsSL https://bun.sh/install | bash || echo "Failed to install bun"
+fi
+
+# ==============================================================================
+# yt-dlp (YouTube/media downloader)
+# ==============================================================================
+if ! command -v yt-dlp &>/dev/null; then
+  mkdir -p ~/.local/bin
+  curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+    -o ~/.local/bin/yt-dlp && chmod +x ~/.local/bin/yt-dlp || echo "Failed to install yt-dlp"
+fi
+
 echo "Basics installed. Next: 02_shell.sh then 03_dotfiles.sh"

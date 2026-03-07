@@ -32,7 +32,8 @@ export NVM_DIR="$HOME/.nvm"
 nvm install --lts
 nvm alias default 'lts/*'
 
-brew install bun yt-dlp gemini-cli
+curl -fsSL https://bun.sh/install | bash
+brew install yt-dlp gemini-cli
 
 brew install --cask ghostty codex
 

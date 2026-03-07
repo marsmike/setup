@@ -63,12 +63,19 @@ touch "${HOME}/.zsh_history"
 
 # --- set zsh as default shell ---
 ZSH_BIN="$(command -v zsh || echo "")"
-if [ -n "${ZSH_BIN}" ] && [ "${SHELL}" != "${ZSH_BIN}" ]; then
+if [ -z "${ZSH_BIN}" ]; then
+  echo "NOTE: zsh is not installed or not in PATH. Skipping shell change."
+elif [[ "${SHELL}" == */zsh ]]; then
+  echo "Default shell is already zsh, skipping."
+else
+  # macOS requires the shell to be listed in /etc/shells before chsh accepts it
+  if ! grep -qx "${ZSH_BIN}" /etc/shells; then
+    echo "Adding ${ZSH_BIN} to /etc/shells..."
+    echo "${ZSH_BIN}" | sudo tee -a /etc/shells > /dev/null
+  fi
   echo "Setting zsh as default shell..."
   chsh -s "${ZSH_BIN}"
   echo "Default shell changed to zsh."
-elif [ -z "${ZSH_BIN}" ]; then
-  echo "NOTE: zsh is not installed or not in PATH. Skipping shell change."
 fi
 
 echo ""

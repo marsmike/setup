@@ -2,6 +2,10 @@
 # Spawn persistent Claude Code sessions inside tmux.
 # Idempotent — safe to re-run; skips windows that are already active.
 #
+# Auto-restart: uses tmux remain-on-exit + respawn-pane so you always see
+# Claude's actual UI. When Claude exits, the pane shows its last output for
+# RESPAWN_DELAY seconds, then automatically respawns.
+#
 # Usage:
 #   ./10_claude_agents.sh              # create session, no auto-start
 #   ./10_claude_agents.sh --start      # create session and launch claude in each window
@@ -10,9 +14,9 @@
 set -euo pipefail
 
 SESSION="claude"
+RESPAWN_DELAY=10
 
-# Window definitions: name:workdir:command
-# bot runs the whatsapp bot prompt; others are general-purpose agents
+# Window definitions: name:workdir
 WINDOWS=(
   "bot:$HOME/work/bot"
   "kora:$HOME/work/kora"
@@ -29,7 +33,8 @@ status() {
     return 1
   fi
   echo "Session: $SESSION"
-  tmux list-windows -t "$SESSION" -F '  #{window_index}: #{window_name} (#{pane_current_path}) #{?window_active,← active,}'
+  tmux list-windows -t "$SESSION" -F \
+    '  #{window_index}: #{window_name} (#{pane_current_path}) #{?pane_dead,[dead],running} #{?window_active,← active,}'
 }
 
 stop() {
@@ -48,6 +53,7 @@ ensure_window() {
   if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     # First window creates the session
     tmux new-session -d -s "$SESSION" -n "$name" -c "$workdir"
+    configure_session
     echo "  Created session + window '$name'"
   elif ! tmux list-windows -t "$SESSION" -F '#{window_name}' | grep -qx "$name"; then
     tmux new-window -t "$SESSION" -n "$name" -c "$workdir"
@@ -57,16 +63,35 @@ ensure_window() {
   fi
 }
 
+configure_session() {
+  # When a pane's process exits, keep the pane visible (shows last output)
+  tmux set-option -t "$SESSION" remain-on-exit on
+
+  # Auto-respawn dead panes after a delay
+  # The hook fires whenever a pane dies; we sleep then respawn it
+  tmux set-hook -t "$SESSION" pane-died \
+    "run-shell 'sleep ${RESPAWN_DELAY} && tmux respawn-pane -k -t \"#{session_name}:#{window_name}\"'"
+}
+
 start_claude() {
   local name="$1"
-  # Only send if the pane is sitting at a shell prompt (not already running something)
-  local pane_cmd
-  pane_cmd=$(tmux list-panes -t "$SESSION:$name" -F '#{pane_current_command}' 2>/dev/null || echo "")
-  if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
-    tmux send-keys -t "$SESSION:$name" "claude" C-m
-    echo "  Started claude in '$name'"
+  local pane_dead
+  pane_dead=$(tmux list-panes -t "$SESSION:$name" -F '#{pane_dead}' 2>/dev/null || echo "")
+
+  if [[ "$pane_dead" == "1" ]]; then
+    # Pane is dead (previous process exited) — respawn with claude
+    tmux respawn-pane -k -t "$SESSION:$name" "claude"
+    echo "  Respawned claude in '$name'"
   else
-    echo "  Window '$name' already has a process running ($pane_cmd)"
+    # Pane is alive — check if it's at a shell prompt
+    local pane_cmd
+    pane_cmd=$(tmux list-panes -t "$SESSION:$name" -F '#{pane_current_command}' 2>/dev/null || echo "")
+    if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
+      tmux send-keys -t "$SESSION:$name" "claude" C-m
+      echo "  Started claude in '$name'"
+    else
+      echo "  Window '$name' already has a process running ($pane_cmd)"
+    fi
   fi
 }
 
@@ -85,7 +110,6 @@ case "$ACTION" in
     exit 0
     ;;
   --start)
-    # Create + start
     echo "Setting up tmux session '$SESSION'..."
     for entry in "${WINDOWS[@]}"; do
       IFS=: read -r name workdir <<< "$entry"
@@ -99,7 +123,6 @@ case "$ACTION" in
     done
     ;;
   *)
-    # Just create the session and windows
     echo "Setting up tmux session '$SESSION'..."
     for entry in "${WINDOWS[@]}"; do
       IFS=: read -r name workdir <<< "$entry"

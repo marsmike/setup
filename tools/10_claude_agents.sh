@@ -2,9 +2,9 @@
 # Spawn persistent Claude Code sessions inside tmux.
 # Idempotent — safe to re-run; skips windows that are already active.
 #
-# Auto-restart: uses tmux remain-on-exit + respawn-pane so you always see
-# Claude's actual UI. When Claude exits, the pane shows its last output for
-# RESPAWN_DELAY seconds, then automatically respawns.
+# When Claude exits, the pane stays visible (remain-on-exit) so you can
+# read the last output. No auto-respawn — reconnect via SSH and restart
+# manually with --start.
 #
 # Usage:
 #   ./10_claude_agents.sh              # create session, no auto-start
@@ -14,14 +14,15 @@
 set -euo pipefail
 
 SESSION="claude"
-RESPAWN_DELAY=10
 
 # Window definitions: name:workdir
+# bot    — whatsapp bot (runs /loop 1m /whatsapp-check)
+# kora   — remote-control agent for on-the-road work
 WINDOWS=(
   "bot:$HOME/work/bot"
   "kora:$HOME/work/kora"
-  "xena:$HOME/work/xena"
-  "bibi:$HOME/work/bibi"
+  # "xena:$HOME/work/xena"
+  # "bibi:$HOME/work/bibi"
 )
 
 # ---------------------------------------------------------------------------
@@ -64,13 +65,9 @@ ensure_window() {
 }
 
 configure_session() {
-  # When a pane's process exits, keep the pane visible (shows last output)
+  # When a pane's process exits, keep the pane visible so you can read
+  # the last output. No auto-respawn — restart manually with --start.
   tmux set-option -t "$SESSION" remain-on-exit on
-
-  # Auto-respawn dead panes after a delay
-  # The hook fires whenever a pane dies; we sleep then respawn it
-  tmux set-hook -t "$SESSION" pane-died \
-    "run-shell 'sleep ${RESPAWN_DELAY} && tmux respawn-pane -k -t \"#{session_name}:#{window_name}\"'"
 }
 
 start_claude() {

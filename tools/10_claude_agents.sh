@@ -15,14 +15,14 @@ set -euo pipefail
 
 SESSION="claude"
 
-# Window definitions: name:workdir
-# bot    — whatsapp bot (runs /loop 1m /whatsapp-check)
+# Window definitions: name:workdir:claude_args
+# bot    — whatsapp bot (skip permissions for autonomous operation)
 # kora   — remote-control agent for on-the-road work
 WINDOWS=(
-  "bot:$HOME/work/bot"
-  "kora:$HOME/work/kora"
-  # "xena:$HOME/work/xena"
-  # "bibi:$HOME/work/bibi"
+  "bot:$HOME/work/bot:--dangerously-skip-permissions"
+  "kora:$HOME/work/kora:"
+  # "xena:$HOME/work/xena:"
+  # "bibi:$HOME/work/bibi:"
 )
 
 # ---------------------------------------------------------------------------
@@ -71,21 +71,22 @@ configure_session() {
 }
 
 start_claude() {
-  local name="$1"
+  local name="$1" args="${2:-}"
+  local cmd="claude${args:+ $args}"
   local pane_dead
   pane_dead=$(tmux list-panes -t "$SESSION:$name" -F '#{pane_dead}' 2>/dev/null || echo "")
 
   if [[ "$pane_dead" == "1" ]]; then
     # Pane is dead (previous process exited) — respawn with claude
-    tmux respawn-pane -k -t "$SESSION:$name" "claude"
-    echo "  Respawned claude in '$name'"
+    tmux respawn-pane -k -t "$SESSION:$name" "$cmd"
+    echo "  Respawned '$name' ($cmd)"
   else
     # Pane is alive — check if it's at a shell prompt
     local pane_cmd
     pane_cmd=$(tmux list-panes -t "$SESSION:$name" -F '#{pane_current_command}' 2>/dev/null || echo "")
     if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
-      tmux send-keys -t "$SESSION:$name" "claude" C-m
-      echo "  Started claude in '$name'"
+      tmux send-keys -t "$SESSION:$name" "$cmd" C-m
+      echo "  Started '$name' ($cmd)"
     else
       echo "  Window '$name' already has a process running ($pane_cmd)"
     fi
@@ -109,14 +110,14 @@ case "$ACTION" in
   --start)
     echo "Setting up tmux session '$SESSION'..."
     for entry in "${WINDOWS[@]}"; do
-      IFS=: read -r name workdir <<< "$entry"
+      IFS=: read -r name workdir args <<< "$entry"
       ensure_window "$name" "$workdir"
     done
     echo ""
     echo "Starting claude in all windows..."
     for entry in "${WINDOWS[@]}"; do
-      IFS=: read -r name workdir <<< "$entry"
-      start_claude "$name"
+      IFS=: read -r name workdir args <<< "$entry"
+      start_claude "$name" "$args"
     done
     ;;
   *)

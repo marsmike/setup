@@ -304,6 +304,8 @@ echo "Installing GitHub Copilot CLI..."
 npm install -g @github/copilot
 echo "Installing OpenAI Codex CLI..."
 npm install -g @openai/codex
+echo "Installing obsidian-headless (headless Obsidian Sync CLI)..."
+npm install -g obsidian-headless
 
 # ==============================================================================
 # LLM CLI tools (Simon Willison stack + aider + pi)

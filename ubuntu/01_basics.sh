@@ -35,7 +35,7 @@ sudo apt -y install \
   python3 python3-pip python3-venv \
   zoxide ncdu tldr httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
   ripgrep fd-find ranger \
-  direnv hyperfine lnav \
+  direnv hyperfine lnav sqlite3 \
   "$LIBFUSE"
 
 # On Ubuntu, bat is installed as 'batcat' — create a user-level symlink

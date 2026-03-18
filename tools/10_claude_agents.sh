@@ -35,8 +35,8 @@ WA_SCRIPT="$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/whatsapp/*/scripts
 # kora   — remote-control agent for on-the-road work
 # top    — crowd-top live dashboard
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/remote-control|/loop 180s /whatsapp-check"
-  "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control"
+  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/remote-control bot|/loop 180s /whatsapp-check"
+  "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control kora"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   # "xena|$HOME/work/xena|$CLAUDE"
   # "bibi|$HOME/work/bibi|$CLAUDE"
@@ -105,6 +105,71 @@ status() {
   echo "Session: $SESSION"
   $TMUX list-windows -t "$SESSION" -F \
     '  #{window_index}: #{window_name} (#{pane_current_path}) #{?pane_dead,[dead],running} #{?window_active,← active,}'
+}
+
+jobs() {
+  echo "=== Scheduled Jobs ==="
+  echo ""
+
+  # 1. System cron
+  local cron
+  cron=$(crontab -l 2>/dev/null | grep -v '^$' || true)
+  if [[ -n "$cron" ]]; then
+    echo "Cron (crontab -l):"
+    echo "$cron" | while IFS= read -r line; do
+      if [[ "$line" == \#* ]]; then
+        echo "  $line"
+      else
+        # Parse cron schedule into human-readable form
+        local schedule="${line%% /*}"
+        local command="${line#* /}"
+        local desc=""
+        case "$schedule" in
+          "0 3 * * *") desc="daily at 03:00" ;;
+          "0 6 * * *") desc="daily at 06:00" ;;
+          *)
+            # minute hour dom month dow
+            read -r m h dom mon dow <<< "$schedule"
+            desc="cron $m $h $dom $mon $dow"
+            ;;
+        esac
+        printf "  %-20s /%s\n" "$desc" "$command"
+      fi
+    done
+  else
+    echo "Cron: (none)"
+  fi
+
+  echo ""
+
+  # 2. In-session loops (from WINDOWS config)
+  echo "In-session loops:"
+  for entry in "${WINDOWS[@]}"; do
+    IFS='|' read -ra parts <<< "$entry"
+    local name="${parts[0]}"
+    for cmd in "${parts[@]:3}"; do
+      if [[ "$cmd" == /loop* ]]; then
+        local interval="${cmd#/loop }"
+        interval="${interval%% *}"
+        local loop_cmd="${cmd#/loop $interval }"
+        printf "  %-20s %s (in %s window)\n" "every $interval" "$loop_cmd" "$name"
+      fi
+    done
+  done
+
+  echo ""
+
+  # 3. Post-start commands (not loops, but run on every restart)
+  echo "On restart (03:00 nightly):"
+  for entry in "${WINDOWS[@]}"; do
+    IFS='|' read -ra parts <<< "$entry"
+    local name="${parts[0]}"
+    for cmd in "${parts[@]:3}"; do
+      if [[ "$cmd" != /loop* ]]; then
+        printf "  %-20s %s (in %s window)\n" "once" "$cmd" "$name"
+      fi
+    done
+  done
 }
 
 stop_session() {
@@ -457,10 +522,15 @@ case "$ACTION" in
     echo "  --start           Create, launch Claude instances, and run post-start commands"
     echo "  --restart, -r     Stop everything, then --start (with retry logic)"
     echo "  --stop, -k        Kill the entire tmux session"
+    echo "  --jobs, -j        Show all scheduled and recurring jobs"
     echo "  --status, -s      Show session and window status"
     echo "  --install-cron    Add nightly restart + morning greeting cron jobs"
     echo "  --remove-cron     Remove managed cron jobs"
     echo "  --help, -h        Show this help message"
+    exit 0
+    ;;
+  --jobs|-j)
+    jobs
     exit 0
     ;;
   --status|-s)

@@ -42,8 +42,9 @@ WINDOWS=(
   # "bibi|$HOME/work/bibi|$CLAUDE"
 )
 
-# Cron marker used for idempotent install/remove
+# Cron markers used for idempotent install/remove
 CRON_MARKER="# Claude agents nightly restart — managed by 10_claude_agents.sh"
+MORNING_MARKER="# Claude agents morning greeting — managed by 10_claude_agents.sh"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -393,25 +394,48 @@ do_restart() {
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 install_cron() {
-  if crontab -l 2>/dev/null | grep -qF "$CRON_MARKER"; then
-    echo "Cron job already installed."
-    return 0
+  local changed=0
+  local current
+  current=$(crontab -l 2>/dev/null || true)
+
+  if echo "$current" | grep -qF "$CRON_MARKER"; then
+    echo "Nightly restart cron already installed."
+  else
+    current="$current
+$CRON_MARKER
+0 3 * * * $SCRIPT_PATH --restart"
+    changed=1
   fi
-  (
-    crontab -l 2>/dev/null || true
-    echo "$CRON_MARKER"
-    echo "0 3 * * * $SCRIPT_PATH --restart"
-  ) | crontab -
-  echo "Cron job installed: nightly restart at 03:00"
+
+  if echo "$current" | grep -qF "$MORNING_MARKER"; then
+    echo "Morning greeting cron already installed."
+  else
+    current="$current
+$MORNING_MARKER
+0 6 * * * $TMUX send-keys -t $SESSION:bot '/whatsapp-morning' C-m"
+    changed=1
+  fi
+
+  if (( changed )); then
+    echo "$current" | crontab -
+    echo "Cron jobs installed: nightly restart at 03:00, morning greeting at 06:00 MEZ"
+  fi
 }
 
 remove_cron() {
-  if ! crontab -l 2>/dev/null | grep -qF "$CRON_MARKER"; then
-    echo "No cron job found."
+  local current
+  current=$(crontab -l 2>/dev/null || true)
+  if ! echo "$current" | grep -qF "$CRON_MARKER" && ! echo "$current" | grep -qF "$MORNING_MARKER"; then
+    echo "No cron jobs found."
     return 0
   fi
-  crontab -l 2>/dev/null | grep -vF "$CRON_MARKER" | grep -v "$SCRIPT_PATH --restart" | crontab -
-  echo "Cron job removed."
+  echo "$current" \
+    | grep -vF "$CRON_MARKER" \
+    | grep -v "$SCRIPT_PATH --restart" \
+    | grep -vF "$MORNING_MARKER" \
+    | grep -v "whatsapp-morning" \
+    | crontab -
+  echo "Cron jobs removed."
 }
 
 # ---------------------------------------------------------------------------

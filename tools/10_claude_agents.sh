@@ -19,7 +19,7 @@ set -euo pipefail
 SESSION="claude"
 LOGFILE="$HOME/.claude/claude-agents.log"
 TMUX="/usr/bin/tmux"
-CLAUDE="$HOME/.local/bin/claude"
+CLAUDE="$HOME/.local/bin/claude --model claude-sonnet-4-6"
 MAX_RETRIES=5
 RETRY_WAIT=1800  # 30 minutes
 
@@ -35,7 +35,7 @@ WA_SCRIPT="$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/whatsapp/*/scripts
 # kora   — remote-control agent for on-the-road work
 # top    — crowd-top live dashboard
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/remote-control|/whatsapp-start"
+  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/remote-control|/loop 180s /whatsapp-check"
   "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   # "xena|$HOME/work/xena|$CLAUDE"

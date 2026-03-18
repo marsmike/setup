@@ -447,6 +447,22 @@ mkdir -p "$(dirname "$LOGFILE")"
 ACTION="${1:-create}"
 
 case "$ACTION" in
+  --help|-h)
+    echo "Usage: $(basename "$0") [OPTION]"
+    echo ""
+    echo "Manage persistent Claude Code sessions inside tmux."
+    echo ""
+    echo "Options:"
+    echo "  (none)            Create tmux session + windows only (idempotent)"
+    echo "  --start           Create, launch Claude instances, and run post-start commands"
+    echo "  --restart, -r     Stop everything, then --start (with retry logic)"
+    echo "  --stop, -k        Kill the entire tmux session"
+    echo "  --status, -s      Show session and window status"
+    echo "  --install-cron    Add nightly restart + morning greeting cron jobs"
+    echo "  --remove-cron     Remove managed cron jobs"
+    echo "  --help, -h        Show this help message"
+    exit 0
+    ;;
   --status|-s)
     status
     exit 0

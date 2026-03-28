@@ -32,11 +32,9 @@ WA_SCRIPT="$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/whatsapp/*/scripts
 # (gets /exit on stop, readiness polling, post-start commands).
 #
 # bot    — whatsapp bot (skip permissions for autonomous operation)
-# kora   — remote-control agent for on-the-road work
 # top    — crowd-top live dashboard
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/remote-control bot|/loop 180s /whatsapp-check"
-  "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control kora"
+  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/loop 180s /whatsapp-check"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   # "xena|$HOME/work/xena|$CLAUDE"
   # "bibi|$HOME/work/bibi|$CLAUDE"

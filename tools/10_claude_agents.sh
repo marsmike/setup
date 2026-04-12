@@ -25,7 +25,7 @@ RETRY_WAIT=1800  # 30 minutes
 
 # WhatsApp alert config (works independently — bridge is a systemd service)
 ALERT_JID="191078917525692@lid"
-WA_SCRIPT="$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/whatsapp/*/scripts/wa.sh 2>/dev/null | head -1 || true)"
+WA_SCRIPT="$HOME/work/agentic-toolkit/whatsapp/scripts/wa.sh"
 
 # Window definitions — pipe-separated: name|workdir|command[|post_cmd_1|post_cmd_2|...]
 # If command starts with "claude", it's treated as a Claude instance
@@ -34,7 +34,7 @@ WA_SCRIPT="$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/whatsapp/*/scripts
 # bot    — whatsapp bot (skip permissions for autonomous operation)
 # top    — crowd-top live dashboard
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start"
+  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start|/loop 3600s /whatsapp-check"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   # "xena|$HOME/work/xena|$CLAUDE"
   # "bibi|$HOME/work/bibi|$CLAUDE"
@@ -430,6 +430,29 @@ do_start() {
   return 0
 }
 
+pull_repos() {
+  log "Pulling latest code..."
+  local repos=(
+    "$HOME/work/agentic-toolkit"
+    "$HOME/work/setup"
+  )
+  for repo in "${repos[@]}"; do
+    if [[ -d "$repo/.git" ]]; then
+      local out
+      out=$(cd "$repo" && git pull --ff-only 2>&1) || true
+      log "  $(basename "$repo"): $out"
+    fi
+  done
+
+  # Bust the plugin cache so Claude picks up new skill/command versions.
+  # Claude Code regenerates the cache on next startup from the marketplace source.
+  local cache_dir="$HOME/.claude/plugins/cache/agentic-toolkit"
+  if [[ -d "$cache_dir" ]]; then
+    rm -rf "$cache_dir"
+    log "  Cleared plugin cache"
+  fi
+}
+
 do_restart() {
   rotate_log
   log "=== RESTART ==="
@@ -446,6 +469,9 @@ do_restart() {
     parse_window "$entry"
     stop_window
   done
+
+  # Pull latest code and refresh plugin cache
+  pull_repos
 
   # Start with post-start and retry
   do_start 1

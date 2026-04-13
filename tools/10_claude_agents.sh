@@ -31,11 +31,11 @@ WA_SCRIPT="$HOME/work/agentic-toolkit/whatsapp/scripts/wa.sh"
 # If command starts with "claude", it's treated as a Claude instance
 # (gets /exit on stop, readiness polling, post-start commands).
 #
-# bot    — whatsapp bot (skip permissions for autonomous operation)
+# ozzie  — whatsapp bot (skip permissions for autonomous operation)
 # top    — crowd-top live dashboard
 # kora   — remote-control agent (push commands from phone)
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start"
+  "ozzie|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control"
   # "xena|$HOME/work/xena|$CLAUDE"
@@ -503,7 +503,7 @@ $CRON_MARKER
   else
     current="$current
 $MORNING_MARKER
-0 6 * * * $TMUX send-keys -t $SESSION:bot '/whatsapp-morning' C-m"
+0 6 * * * $TMUX send-keys -t $SESSION:ozzie '/whatsapp-morning' C-m"
     changed=1
   fi
 

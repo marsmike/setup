@@ -14,6 +14,10 @@
 #   ./10_claude_agents.sh --stop       # kill the entire tmux session
 #   ./10_claude_agents.sh --install-cron  # add nightly restart cron job
 #   ./10_claude_agents.sh --remove-cron   # remove nightly restart cron job
+#
+# The morning/thinking/evening/weekly routines are scheduled via crowd
+# (see crontab: cron-dispatch.sh wa-morning|thinking|evening|weekly-review),
+# not by this script.
 set -euo pipefail
 
 SESSION="claude"
@@ -42,9 +46,8 @@ WINDOWS=(
   # "bibi|$HOME/work/bibi|$CLAUDE"
 )
 
-# Cron markers used for idempotent install/remove
+# Cron marker used for idempotent install/remove
 CRON_MARKER="# Claude agents nightly restart — managed by 10_claude_agents.sh"
-MORNING_MARKER="# Claude agents morning greeting — managed by 10_claude_agents.sh"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -126,7 +129,6 @@ jobs() {
         local desc=""
         case "$schedule" in
           "0 3 * * *") desc="daily at 03:00" ;;
-          "0 6 * * *") desc="daily at 06:00" ;;
           *)
             # minute hour dom month dow
             read -r m h dom mon dow <<< "$schedule"
@@ -498,35 +500,24 @@ $CRON_MARKER
     changed=1
   fi
 
-  if echo "$current" | grep -qF "$MORNING_MARKER"; then
-    echo "Morning greeting cron already installed."
-  else
-    current="$current
-$MORNING_MARKER
-0 6 * * * $TMUX send-keys -t $SESSION:ozzie '/whatsapp-morning' C-m"
-    changed=1
-  fi
-
   if (( changed )); then
     echo "$current" | crontab -
-    echo "Cron jobs installed: nightly restart at 03:00, morning greeting at 06:00 MEZ"
+    echo "Cron job installed: nightly restart at 03:00"
   fi
 }
 
 remove_cron() {
   local current
   current=$(crontab -l 2>/dev/null || true)
-  if ! echo "$current" | grep -qF "$CRON_MARKER" && ! echo "$current" | grep -qF "$MORNING_MARKER"; then
-    echo "No cron jobs found."
+  if ! echo "$current" | grep -qF "$CRON_MARKER"; then
+    echo "No managed cron job found."
     return 0
   fi
   echo "$current" \
     | grep -vF "$CRON_MARKER" \
     | grep -v "$SCRIPT_PATH --restart" \
-    | grep -vF "$MORNING_MARKER" \
-    | grep -v "whatsapp-morning" \
     | crontab -
-  echo "Cron jobs removed."
+  echo "Cron job removed."
 }
 
 # ---------------------------------------------------------------------------
@@ -550,8 +541,8 @@ case "$ACTION" in
     echo "  --stop, -k        Kill the entire tmux session"
     echo "  --jobs, -j        Show all scheduled and recurring jobs"
     echo "  --status, -s      Show session and window status"
-    echo "  --install-cron    Add nightly restart + morning greeting cron jobs"
-    echo "  --remove-cron     Remove managed cron jobs"
+    echo "  --install-cron    Add nightly restart cron job (03:00)"
+    echo "  --remove-cron     Remove managed cron job"
     echo "  --help, -h        Show this help message"
     exit 0
     ;;

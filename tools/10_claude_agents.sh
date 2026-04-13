@@ -35,7 +35,7 @@ WA_SCRIPT="$HOME/work/agentic-toolkit/whatsapp/scripts/wa.sh"
 # top    — crowd-top live dashboard
 # kora   — remote-control agent (push commands from phone)
 WINDOWS=(
-  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start|/loop 3600s /whatsapp-check"
+  "bot|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start"
   "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
   "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control"
   # "xena|$HOME/work/xena|$CLAUDE"

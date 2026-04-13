@@ -1,4 +1,9 @@
 #!/bin/bash
+# -----------------------------------------------------------------------------
+# BACKUP COPY — not authoritative.
+# Canonical version lives at: ~/work/agentic-toolkit/scripts/agents.sh
+# The nightly restart cron invokes that path; edits here are NOT picked up.
+# -----------------------------------------------------------------------------
 # Spawn persistent Claude Code sessions inside tmux with auto-setup.
 # Idempotent — safe to re-run; skips windows that are already active.
 #

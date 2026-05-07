@@ -1,6 +1,6 @@
 # Overrides applied on top of the upstream docker-compose.yml
 services:
-  ragflow:
+  ragflow-cpu:
     environment:
       - TELEMETRY_ENABLED=false
       - RAGFLOW_ANALYTICS=false

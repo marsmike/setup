@@ -33,8 +33,8 @@ sudo apt -y install \
   git apt-transport-https ca-certificates curl build-essential \
   btop htop gh vim wget \
   python3 python3-pip python3-venv \
-  zoxide ncdu tldr httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
-  ripgrep fd-find ranger \
+  zoxide ncdu tealdeer httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
+  ripgrep fd-find ranger eza \
   direnv hyperfine lnav sqlite3 \
   "$LIBFUSE"
 

@@ -2,17 +2,17 @@
 
 **Date:** 2026-05-07
 **Hardware:** AceMagic F3A — AMD HX370 (Radeon 890M, RDNA 3.5, gfx1103), 128 GB LPDDR5X
-**OS:** Ubuntu 26.04 (192.168.1.203)
+**OS:** Ubuntu 26.04 (192.168.1.13)
 **Goal:** Local LLM inference (no cloud, no telemetry) + RagFlow document Q&A, all on bare metal.
 
 ---
 
 ## Architecture
 
-Three layers stacked on the F3A:
+Four layers stacked on the F3A:
 
 ```
-F3A (192.168.1.203)
+F3A (192.168.1.13)
 │
 ├── Layer 1 — GPU / kernel
 │   ├── amdgpu.gttsize=98304  (96 GB GTT cap — mapping limit, not reservation)
@@ -25,12 +25,17 @@ F3A (192.168.1.203)
 │   └── llama.cpp server :8080 benchmark + experimental, manual start only
 │       └── --host 0.0.0.0 — binds all interfaces
 │
-└── Layer 3 — RagFlow (Docker Compose)
-    ├── ragflow-server :80
-    ├── elasticsearch (heap capped at 8 GB)
-    ├── minio, redis, mysql
-    ├── telemetry disabled — env vars + iptables DOCKER-USER outbound block
-    └── LLM backend → Ollama at host.docker.internal:11434
+├── Layer 3 — RagFlow (Docker Compose)     ← LAN-accessible :80
+│   ├── ragflow-server :80
+│   ├── elasticsearch (heap capped at 8 GB)
+│   ├── minio, redis, mysql
+│   ├── telemetry disabled — env vars + UFW after.rules outbound block
+│   └── LLM backend → Ollama at host.docker.internal:11434
+│
+└── Layer 4 — Open WebUI (Docker)          ← LAN-accessible :3000
+    ├── Chat UI for direct Ollama interaction
+    ├── Persistent volume: open-webui-data
+    └── Backend → Ollama at host.docker.internal:11434
 ```
 
 ### Why Vulkan over ROCm
@@ -83,6 +88,7 @@ ubuntu/
 ├── 51_ollama.sh            Ollama install, ROCm env, model pulls
 ├── 52_llamacpp_vulkan.sh   Build llama.cpp from source (GGML_VULKAN=1)
 ├── 53_ragflow.sh           RagFlow Docker Compose + privacy hardening
+├── 54_openwebui.sh         Open WebUI Docker container + UFW rule
 ├── benchmark_llm.sh        t/s comparison: Ollama vs llama.cpp, all models
 │
 └── ragflow/
@@ -138,6 +144,22 @@ ubuntu/
 4. `docker compose --env-file ragflow.env up -d`
 5. Append DOCKER-USER block to `/etc/ufw/after.rules`, then `sudo ufw reload`
 6. Print: RagFlow URL, admin setup instructions, Ollama config location in UI
+
+### 54_openwebui.sh
+
+1. Run as standalone Docker container (no Compose — keeps it independent of RagFlow):
+   ```bash
+   docker run -d \
+     --name open-webui \
+     --restart always \
+     -p 3000:8080 \
+     -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+     -v open-webui-data:/app/backend/data \
+     --add-host host.docker.internal:host-gateway \
+     ghcr.io/open-webui/open-webui:main
+   ```
+2. Open LAN access: `sudo ufw allow from 192.168.1.0/24 to any port 3000 comment 'Open WebUI LAN'`
+3. Print: `http://192.168.1.13:3000` — first visit creates admin account
 
 ### benchmark_llm.sh
 
@@ -209,11 +231,12 @@ because UFW manages `/etc/ufw/after.rules` natively.
 
 All services on F3A are accessible from any machine on 192.168.1.0/24:
 
-| Service | URL | API |
+| Service | URL | Notes |
 |---|---|---|
-| RagFlow UI | `http://192.168.1.203` | Web UI |
-| Ollama | `http://192.168.1.203:11434` | OpenAI-compatible (`/v1/chat/completions`, `/v1/embeddings`) |
-| llama.cpp server | `http://192.168.1.203:8080` | OpenAI-compatible (benchmark / manual use only) |
+| RagFlow UI | `http://192.168.1.13` | Document Q&A, knowledge base |
+| Open WebUI | `http://192.168.1.13:3000` | Chat UI over Ollama |
+| Ollama API | `http://192.168.1.13:11434` | OpenAI-compatible (`/v1/chat/completions`, `/v1/embeddings`) |
+| llama.cpp server | `http://192.168.1.13:8080` | OpenAI-compatible (benchmark / manual use only) |
 
 UFW rules allow inbound on 11434 and 8080 from LAN only (not internet-exposed).
 Outbound from Docker containers (RagFlow) is blocked except LAN + loopback.
@@ -230,6 +253,7 @@ sudo reboot                     # required for amdgpu.gttsize to take effect
 bash ubuntu/51_ollama.sh       # install Ollama, ROCm override, pull models
 bash ubuntu/52_llamacpp_vulkan.sh  # build llama.cpp with Vulkan
 bash ubuntu/53_ragflow.sh      # deploy RagFlow + privacy rules
+bash ubuntu/54_openwebui.sh    # deploy Open WebUI chat interface
 bash ubuntu/benchmark_llm.sh   # compare t/s Ollama vs llama.cpp
 ```
 

@@ -19,9 +19,11 @@ F3A (192.168.1.203)
 │   ├── Vulkan drivers: mesa-vulkan-drivers, vulkan-tools
 │   └── ROCm override: HSA_OVERRIDE_GFX_VERSION=11.0.3 (injected via Ollama systemd env)
 │
-├── Layer 2 — Inference
+├── Layer 2 — Inference                    ← LAN-accessible (192.168.1.0/24)
 │   ├── Ollama :11434          primary, OpenAI-compatible, systemd-managed
+│   │   └── OLLAMA_HOST=0.0.0.0 — binds all interfaces
 │   └── llama.cpp server :8080 benchmark + experimental, manual start only
+│       └── --host 0.0.0.0 — binds all interfaces
 │
 └── Layer 3 — RagFlow (Docker Compose)
     ├── ragflow-server :80
@@ -107,11 +109,13 @@ ubuntu/
    Environment="ROCR_VISIBLE_DEVICES=0"
    Environment="OLLAMA_FLASH_ATTENTION=1"
    Environment="OLLAMA_NUM_PARALLEL=1"
+   Environment="OLLAMA_HOST=0.0.0.0:11434"
    ```
 3. `systemctl daemon-reload && systemctl enable --now ollama`
 4. Pull models: `ollama pull bge-m3`, `ollama pull qwen3:30b-a3b-q4_K_M`, `ollama pull gemma4`
-5. Smoke-test: `ollama run gemma4 "Hello" --nowordwrap`
-6. Print GPU utilisation check: `ollama ps` (shows which backend is active)
+5. Open LAN access: `sudo ufw allow from 192.168.1.0/24 to any port 11434 comment 'Ollama LAN'`
+6. Smoke-test: `ollama run gemma4 "Hello" --nowordwrap`
+7. Print GPU utilisation check: `ollama ps` (shows which backend is active)
 
 ### 52_llamacpp_vulkan.sh
 
@@ -123,7 +127,8 @@ ubuntu/
    cmake --build build -j$(nproc)
    ```
 4. Install `llama-server` and `llama-cli` to `~/.local/bin`
-5. Print usage: how to start server for a given GGUF model path
+5. Open LAN access: `sudo ufw allow from 192.168.1.0/24 to any port 8080 comment 'llama.cpp LAN'`
+6. Print usage: `llama-server --host 0.0.0.0 --port 8080 -m /path/to/model.gguf`
 
 ### 53_ragflow.sh
 
@@ -197,6 +202,21 @@ sudo ufw status verbose
 RagFlow reaches Ollama via `host.docker.internal:11434` (LAN-local, permitted).
 All external calls from Docker containers are dropped. Rules survive reboots
 because UFW manages `/etc/ufw/after.rules` natively.
+
+---
+
+## LAN Endpoints
+
+All services on F3A are accessible from any machine on 192.168.1.0/24:
+
+| Service | URL | API |
+|---|---|---|
+| RagFlow UI | `http://192.168.1.203` | Web UI |
+| Ollama | `http://192.168.1.203:11434` | OpenAI-compatible (`/v1/chat/completions`, `/v1/embeddings`) |
+| llama.cpp server | `http://192.168.1.203:8080` | OpenAI-compatible (benchmark / manual use only) |
+
+UFW rules allow inbound on 11434 and 8080 from LAN only (not internet-exposed).
+Outbound from Docker containers (RagFlow) is blocked except LAN + loopback.
 
 ---
 

@@ -17,8 +17,8 @@ log()    { echo -e "${BLUE}[benchmark]${NC} $*"; }
 result() { echo -e "${GREEN}[result]${NC}   $*"; }
 warn()   { echo -e "${YELLOW}[warn]${NC}     $*"; }
 
-# Require: curl, python3, jq (optional)
-for dep in curl python3; do
+# Require: curl, python3, jq
+for dep in curl python3 jq; do
   command -v "$dep" >/dev/null 2>&1 || { echo "ERROR: $dep is required"; exit 1; }
 done
 
@@ -62,17 +62,14 @@ benchmark_model() {
   start=$(date +%s%N)
 
   local response
+  local payload
+  payload=$(jq -n \
+    --arg model "$model" \
+    --arg prompt "$PROMPT" \
+    '{"model": $model, "prompt": $prompt, "stream": false, "options": {"num_predict": 150, "temperature": 0.1}}')
   response=$(curl -sf "${OLLAMA_URL}/api/generate" \
     -H "Content-Type: application/json" \
-    -d "$(python3 -c "
-import json
-print(json.dumps({
-  'model': '$model',
-  'prompt': '''$PROMPT''',
-  'stream': False,
-  'options': {'num_predict': 150, 'temperature': 0.1}
-}))
-")" 2>/dev/null) || { warn "  ERROR: inference failed for ${model}"; return; }
+    -d "$payload" 2>/dev/null) || { warn "  ERROR: inference failed for ${model}"; return; }
 
   end=$(date +%s%N)
   elapsed=$(( (end - start) / 1000000 ))  # ms

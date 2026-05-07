@@ -30,7 +30,10 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable ollama
 sudo systemctl restart ollama
-sleep 3  # let it initialise
+
+echo "Waiting for Ollama API to become ready..."
+timeout 30 bash -c 'until curl -s http://localhost:11434/api/tags >/dev/null 2>&1; do sleep 1; done' \
+  || { echo "ERROR: Ollama API did not start within 30 seconds"; sudo systemctl status ollama; exit 1; }
 
 echo "Ollama service status:"
 sudo systemctl is-active ollama

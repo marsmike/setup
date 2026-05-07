@@ -12,12 +12,17 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
 fi
 
 # --- Start Open WebUI ---
+# HF_HUB_OFFLINE + TRANSFORMERS_OFFLINE: skip HuggingFace network calls at startup.
+# Models are cached in the volume; outbound internet from Docker containers is
+# blocked by the DOCKER-USER firewall rules added in 53_ragflow.sh.
 docker run -d \
   --name "$CONTAINER_NAME" \
   --restart always \
   -p 3000:8080 \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   -e WEBUI_AUTH=true \
+  -e HF_HUB_OFFLINE=1 \
+  -e TRANSFORMERS_OFFLINE=1 \
   -v open-webui-data:/app/backend/data \
   --add-host host.docker.internal:host-gateway \
   ghcr.io/open-webui/open-webui:main

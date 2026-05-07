@@ -1,0 +1,13 @@
+# Overrides applied on top of the upstream docker-compose.yml
+services:
+  ragflow:
+    environment:
+      - TELEMETRY_ENABLED=false
+      - RAGFLOW_ANALYTICS=false
+      - DOC_INTELLIGENCE_ENDPOINT=
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  es01:
+    environment:
+      - ES_JAVA_OPTS=-Xms4g -Xmx8g

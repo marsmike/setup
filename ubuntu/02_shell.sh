@@ -67,8 +67,9 @@ if ! infocmp xterm-ghostty &>/dev/null; then
     -o "$TMP/ghostty.terminfo" 2>/dev/null \
     || curl -fsSL "https://ghostty.org/terminfo/ghostty.terminfo" \
       -o "$TMP/ghostty.terminfo" 2>/dev/null
+  mkdir -p ~/.terminfo
   if [ -s "$TMP/ghostty.terminfo" ]; then
-    tic -x "$TMP/ghostty.terminfo"
+    tic -x -o ~/.terminfo "$TMP/ghostty.terminfo"
     echo "Ghostty terminfo installed."
   else
     # Fallback: write a minimal terminfo entry
@@ -76,7 +77,7 @@ if ! infocmp xterm-ghostty &>/dev/null; then
 xterm-ghostty|ghostty|Ghostty,
 	use=xterm-256color,
 TERMINFO
-    tic -x "$TMP/ghostty.terminfo"
+    tic -x -o ~/.terminfo "$TMP/ghostty.terminfo"
     echo "Ghostty terminfo installed (minimal fallback)."
   fi
 else

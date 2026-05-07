@@ -12,12 +12,15 @@ else
 fi
 
 # --- Systemd override (AMD ROCm + LAN binding) ---
+# Note: Radeon 890M is gfx1150 — Ollama 0.23+ detects it natively.
+# HSA_OVERRIDE_GFX_VERSION is NOT set here; setting it to 11.0.3 (gfx1103) breaks
+# ROCm discovery because Ollama's bundled rocblas has no Tensile kernels for gfx1103.
+# gfx1150 kernels ARE present in the bundled rocblas library.
 OVERRIDE_DIR=/etc/systemd/system/ollama.service.d
 sudo mkdir -p "$OVERRIDE_DIR"
 
 cat <<'EOF' | sudo tee "$OVERRIDE_DIR/override.conf" > /dev/null
 [Service]
-Environment="HSA_OVERRIDE_GFX_VERSION=11.0.3"
 Environment="ROCR_VISIBLE_DEVICES=0"
 Environment="OLLAMA_FLASH_ATTENTION=1"
 Environment="OLLAMA_NUM_PARALLEL=1"

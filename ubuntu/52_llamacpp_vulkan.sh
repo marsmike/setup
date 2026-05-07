@@ -9,6 +9,7 @@ LLAMA_DIR="$HOME/llama.cpp"
 sudo apt-get install -y \
   cmake ninja-build \
   libvulkan-dev glslc \
+  spirv-headers \
   build-essential pkg-config
 
 # --- Clone or update ---

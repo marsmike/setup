@@ -25,6 +25,7 @@ fetch_if_missing docker-compose.yml
 fetch_if_missing docker-compose-base.yml
 fetch_if_missing service_conf.yaml.template
 fetch_if_missing entrypoint.sh
+fetch_if_missing init.sql
 
 # Make entrypoint executable
 chmod +x entrypoint.sh 2>/dev/null || true
@@ -72,6 +73,7 @@ else
 -A DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 -A DOCKER-USER -d 192.168.1.0/24 -j ACCEPT
 -A DOCKER-USER -d 127.0.0.0/8 -j ACCEPT
+-A DOCKER-USER -d 172.16.0.0/12 -j ACCEPT
 -A DOCKER-USER -j DROP
 -A DOCKER-USER -j RETURN
 COMMIT
@@ -87,7 +89,12 @@ if ! sudo ufw status | grep -q " 80 .*192.168.1.0/24"; then
 fi
 
 # --- Start RagFlow (CPU profile + elasticsearch) ---
-echo "Starting RagFlow stack..."
+# On first run, RagFlow downloads tiktoken data from openaipublic.blob.core.windows.net.
+# Temporarily flush the DOCKER-USER outbound block so the download can succeed,
+# then restore it once the service is healthy.
+echo "Starting RagFlow stack (outbound temporarily allowed for first-run model download)..."
+sudo iptables -F DOCKER-USER 2>/dev/null || true
+
 docker compose \
   -f docker-compose.yml \
   -f docker-compose.override.yml \
@@ -97,15 +104,33 @@ docker compose \
   up -d
 
 echo ""
-echo "Waiting for RagFlow to become healthy (up to 3 min)..."
-for i in $(seq 1 36); do
+echo "Waiting for RagFlow to become healthy (up to 10 min — first run downloads tiktoken data)..."
+RAGFLOW_UP=false
+for i in $(seq 1 60); do
   if curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null | grep -q "200\|301\|302"; then
+    RAGFLOW_UP=true
     echo "RagFlow is up!"
     break
   fi
   echo -n "."
-  sleep 5
+  sleep 10
 done
+echo ""
+
+# Restore DOCKER-USER outbound block now that RagFlow is initialized
+echo "Restoring Docker outbound block..."
+sudo iptables -F DOCKER-USER 2>/dev/null || true
+sudo iptables -A DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -A DOCKER-USER -d 192.168.1.0/24 -j ACCEPT
+sudo iptables -A DOCKER-USER -d 127.0.0.0/8 -j ACCEPT
+sudo iptables -A DOCKER-USER -d 172.16.0.0/12 -j ACCEPT
+sudo iptables -A DOCKER-USER -j DROP
+sudo iptables -A DOCKER-USER -j RETURN
+echo "Docker outbound block restored."
+
+if [ "$RAGFLOW_UP" = false ]; then
+  echo "WARNING: RagFlow did not respond within timeout. Check: docker logs ragflow-ragflow-cpu-1"
+fi
 echo ""
 
 docker compose -f docker-compose.yml --profile elasticsearch --profile cpu ps

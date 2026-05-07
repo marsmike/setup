@@ -4,13 +4,20 @@
 set -euo pipefail
 
 # --- Vulkan drivers ---
-sudo apt-get update -qq
-sudo apt-get install -y \
-  mesa-vulkan-drivers vulkan-tools \
-  libvulkan1 libvulkan-dev
+if ! dpkg -l mesa-vulkan-drivers &>/dev/null; then
+  sudo apt-get update -qq
+  sudo apt-get install -y \
+    mesa-vulkan-drivers vulkan-tools \
+    libvulkan1 libvulkan-dev
+else
+  echo "Vulkan packages already installed."
+fi
 
 # --- Current GTT size (before change) ---
-GTT_FILE=$(ls /sys/class/drm/card*/device/mem_info_gtt_total 2>/dev/null | head -1)
+GTT_FILE=""
+for f in /sys/class/drm/card*/device/mem_info_gtt_total; do
+  [ -f "$f" ] && { GTT_FILE="$f"; break; }
+done
 if [ -n "$GTT_FILE" ]; then
   GTT_BYTES=$(cat "$GTT_FILE")
   GTT_GB=$(( GTT_BYTES / 1024 / 1024 / 1024 ))
@@ -31,6 +38,7 @@ else
     's/^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"/\1 amdgpu.gttsize=98304"/' \
     "$GRUB_FILE"
   sudo update-grub
+  grep -q "amdgpu.gttsize" "$GRUB_FILE" || { echo "ERROR: failed to add amdgpu.gttsize to GRUB"; exit 1; }
   echo "amdgpu.gttsize=98304 added to GRUB_CMDLINE_LINUX_DEFAULT."
 fi
 

@@ -39,10 +39,12 @@ else
   echo ".env already present — preserving existing config."
 fi
 
-# Apply our privacy overrides on top
-echo "" >> .env
-echo "# === Privacy overrides from 53_ragflow.sh ===" >> .env
-grep -v "^#" "$SCRIPT_DIR/ragflow/ragflow.env" | grep -v "^$" >> .env
+# Apply our privacy overrides on top (idempotent)
+if ! grep -q "# === Privacy overrides from 53_ragflow.sh ===" .env; then
+  echo "" >> .env
+  echo "# === Privacy overrides from 53_ragflow.sh ===" >> .env
+  grep -v "^#" "$SCRIPT_DIR/ragflow/ragflow.env" | grep -v "^$" >> .env
+fi
 
 # --- Copy our docker-compose override ---
 cp "$SCRIPT_DIR/ragflow/docker-compose.override.yml" ./docker-compose.override.yml
@@ -89,12 +91,29 @@ if ! sudo ufw status | grep -q " 80 .*192.168.1.0/24"; then
 fi
 
 # --- Start RagFlow (CPU profile + elasticsearch) ---
-# On first run, RagFlow downloads tiktoken data from openaipublic.blob.core.windows.net.
-# Temporarily flush the DOCKER-USER outbound block so the download can succeed,
-# then restore it once the service is healthy.
-echo "Starting RagFlow stack (outbound temporarily allowed for first-run model download)..."
-sudo iptables -F DOCKER-USER 2>/dev/null || true
+# On first run, RagFlow downloads tiktoken data (openaipublic.blob.core.windows.net).
+# Temporarily remove the DOCKER-USER outbound block from after.rules so the download
+# can succeed, then restore it once the service is healthy.
+# We use UFW (ufw reload) to apply/remove the rules — no direct iptables commands.
 
+AFTER_RULES=/etc/ufw/after.rules
+MARKER_BEGIN="# BEGIN ragflow-outbound-block"
+MARKER_END="# END ragflow-outbound-block"
+
+# Remove outbound block temporarily (strip between markers + blank line before)
+echo "Temporarily removing Docker outbound block for first-run initialisation..."
+sudo python3 - "$AFTER_RULES" <<'PYEOF'
+import sys, re
+path = sys.argv[1]
+text = open(path).read()
+# Remove blank line + block between markers (inclusive)
+cleaned = re.sub(r'\n# BEGIN ragflow-outbound-block.*?# END ragflow-outbound-block\n',
+                 '', text, flags=re.DOTALL)
+open(path, 'w').write(cleaned)
+PYEOF
+sudo ufw reload
+
+echo "Starting RagFlow stack..."
 docker compose \
   -f docker-compose.yml \
   -f docker-compose.override.yml \
@@ -117,15 +136,23 @@ for i in $(seq 1 60); do
 done
 echo ""
 
-# Restore DOCKER-USER outbound block now that RagFlow is initialized
+# Restore the DOCKER-USER outbound block via UFW
 echo "Restoring Docker outbound block..."
-sudo iptables -F DOCKER-USER 2>/dev/null || true
-sudo iptables -A DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-sudo iptables -A DOCKER-USER -d 192.168.1.0/24 -j ACCEPT
-sudo iptables -A DOCKER-USER -d 127.0.0.0/8 -j ACCEPT
-sudo iptables -A DOCKER-USER -d 172.16.0.0/12 -j ACCEPT
-sudo iptables -A DOCKER-USER -j DROP
-sudo iptables -A DOCKER-USER -j RETURN
+cat <<'IPTABLES' | sudo tee -a "$AFTER_RULES" > /dev/null
+
+# BEGIN ragflow-outbound-block
+*filter
+:DOCKER-USER - [0:0]
+-A DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+-A DOCKER-USER -d 192.168.1.0/24 -j ACCEPT
+-A DOCKER-USER -d 127.0.0.0/8 -j ACCEPT
+-A DOCKER-USER -d 172.16.0.0/12 -j ACCEPT
+-A DOCKER-USER -j DROP
+-A DOCKER-USER -j RETURN
+COMMIT
+# END ragflow-outbound-block
+IPTABLES
+sudo ufw reload
 echo "Docker outbound block restored."
 
 if [ "$RAGFLOW_UP" = false ]; then

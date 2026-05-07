@@ -22,13 +22,16 @@ else
 fi
 
 # --- Build ---
-cd "$LLAMA_DIR"
+pushd "$LLAMA_DIR" > /dev/null
 cmake -B build \
   -DGGML_VULKAN=1 \
   -DCMAKE_BUILD_TYPE=Release \
   -G Ninja
 
 cmake --build build --target llama-server llama-cli -j"$(nproc)"
+
+[ -f "build/bin/llama-server" ] || { echo "ERROR: llama-server build failed"; exit 1; }
+[ -f "build/bin/llama-cli" ]    || { echo "ERROR: llama-cli build failed"; exit 1; }
 
 # --- Install ---
 mkdir -p ~/.local/bin
@@ -37,9 +40,10 @@ install -m 755 build/bin/llama-cli    ~/.local/bin/llama-cli
 
 echo "Installed:"
 ls -lh ~/.local/bin/llama-server ~/.local/bin/llama-cli
+popd > /dev/null
 
 # --- UFW: LAN access ---
-if ! sudo ufw status | grep -q "8080"; then
+if ! sudo ufw status | grep -q "8080.*192.168.1.0/24"; then
   sudo ufw allow from 192.168.1.0/24 to any port 8080 comment 'llama.cpp LAN'
   echo "UFW rule added for :8080"
 else

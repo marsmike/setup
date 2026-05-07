@@ -1,0 +1,42 @@
+#!/bin/bash
+# Open WebUI — Chat interface over Ollama
+# Runs as a standalone Docker container (independent of RagFlow).
+set -euo pipefail
+
+CONTAINER_NAME=open-webui
+
+# --- Remove old container if present (for idempotent re-run) ---
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+  echo "Removing existing ${CONTAINER_NAME} container..."
+  docker rm -f "$CONTAINER_NAME"
+fi
+
+# --- Start Open WebUI ---
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  --restart always \
+  -p 3000:8080 \
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -e WEBUI_AUTH=true \
+  -v open-webui-data:/app/backend/data \
+  --add-host host.docker.internal:host-gateway \
+  ghcr.io/open-webui/open-webui:main
+
+echo "Waiting for Open WebUI to start..."
+timeout 60 bash -c 'until curl -s http://localhost:3000 >/dev/null 2>&1; do sleep 2; done' \
+  || echo "WARNING: Open WebUI did not respond within 60 seconds — may still be starting"
+
+docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# --- UFW: LAN access ---
+if ! sudo ufw status | grep -q "3000.*192.168.1.0/24"; then
+  sudo ufw allow from 192.168.1.0/24 to any port 3000 comment 'Open WebUI LAN'
+  echo "UFW rule added for :3000"
+fi
+
+echo ""
+echo "================================================================"
+echo "Open WebUI: http://192.168.1.13:3000"
+echo "First visit: create admin account."
+echo "Ollama models are auto-discovered from http://host.docker.internal:11434"
+echo "================================================================"

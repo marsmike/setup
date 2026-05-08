@@ -8,6 +8,11 @@ services:
       - LLM_TIMEOUT_SECONDS=120
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ragflow-tiktoken:/root/.tiktoken
+
+volumes:
+  ragflow-tiktoken:
 
   es01:
     environment:

@@ -48,6 +48,14 @@ function task_exe() {
 HOST_ID="$(hostname)"
 [ ${#HOST_ID} -gt 32 ] && HOST_ID="$(echo -n "$HOST_ID" | md5sum | cut -d ' ' -f 1)"
 
+# v0.25.1+ ships nginx variants (ragflow.conf.{python,golang,hybrid}) and the
+# upstream entrypoint copies one to ragflow.conf at startup. Default: python.
+NGINX_CONF_DIR="/etc/nginx/conf.d"
+if [ -f "${NGINX_CONF_DIR}/ragflow.conf.python" ] && [ ! -f "${NGINX_CONF_DIR}/ragflow.conf" ]; then
+    cp -f "${NGINX_CONF_DIR}/ragflow.conf.python" "${NGINX_CONF_DIR}/ragflow.conf"
+    echo "[entrypoint] applied nginx config: ragflow.conf.python"
+fi
+
 echo "[entrypoint] starting nginx..."
 /usr/sbin/nginx
 

@@ -27,6 +27,22 @@ if command -v ufw >/dev/null 2>&1; then
   fi
 fi
 
+# One-time cleanup: remove the old DOCKER-USER outbound block from earlier
+# versions of this script (private LAN, no longer needed). Idempotent.
+if sudo grep -q "ragflow-outbound-block" /etc/ufw/after.rules 2>/dev/null; then
+  echo "Removing legacy ragflow outbound block from /etc/ufw/after.rules..."
+  sudo python3 -c "
+import re
+p = '/etc/ufw/after.rules'
+t = open(p).read()
+open(p, 'w').write(re.sub(r'\n*# BEGIN ragflow-outbound-block.*?# END ragflow-outbound-block\n*', '\n', t, flags=re.DOTALL))
+"
+  sudo ufw reload >/dev/null
+  # ufw reload doesn't flush a live DOCKER-USER chain — do it explicitly.
+  sudo iptables -F DOCKER-USER 2>/dev/null || true
+  sudo iptables -A DOCKER-USER -j RETURN 2>/dev/null || true
+fi
+
 echo "Starting RagFlow stack (image: $(grep -E 'image: infiniflow/ragflow' docker-compose.yml | awk '{print $2}'))..."
 docker compose up -d
 

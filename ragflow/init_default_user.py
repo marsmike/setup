@@ -48,6 +48,26 @@ def wait_for_database(max_retries=40, retry_delay=3):
     return False
 
 
+def ensure_ollama_models(tenant_id):
+    """Add Ollama models only if none are registered yet for this tenant.
+    Idempotent: safe to call on every boot."""
+    try:
+        from api.db.services.tenant_llm_service import TenantLLMService
+    except ImportError as e:
+        logger.error(f"Cannot import TenantLLMService: {e}")
+        return False
+
+    try:
+        existing = TenantLLMService.query(tenant_id=tenant_id, llm_factory="Ollama")
+        if existing:
+            logger.info(f"Tenant {tenant_id} already has {len(existing)} Ollama model(s) — skipping.")
+            return True
+    except Exception as e:
+        logger.warning(f"Could not check existing Ollama models: {e}")
+
+    return add_ollama_models(tenant_id)
+
+
 def add_ollama_models(tenant_id):
     """Register Ollama factory entries in tenant_llm for this tenant."""
     try:
@@ -73,6 +93,7 @@ def add_ollama_models(tenant_id):
             "api_base": ollama_base,
             "max_tokens": 0,
             "used_tokens": 0,
+            "status": "1",
         })
         logger.info(f"  + chat: {chat_model} (Ollama)")
 
@@ -87,6 +108,7 @@ def add_ollama_models(tenant_id):
                 "api_base": ollama_base,
                 "max_tokens": 0,
                 "used_tokens": 0,
+                "status": "1",
             })
             logger.info(f"  + chat: {name} (Ollama)")
 
@@ -102,6 +124,7 @@ def add_ollama_models(tenant_id):
             "api_base": ollama_base,
             "max_tokens": 8192,
             "used_tokens": 0,
+            "status": "1",
         })
         logger.info(f"  + embedding: {embedding_model} (Ollama, max_tokens=8192)")
 
@@ -184,8 +207,9 @@ def create_default_user():
 
     if users:
         logger.info(f"Found {len(users)} existing user(s) — skipping creation.")
-        # Idempotent re-check of API key on every boot
         first = users[0]
+        # Idempotent re-checks on every boot
+        ensure_ollama_models(first.id)
         return create_api_key(first.id)
 
     logger.info(f"No users found. Creating admin user {email}...")
@@ -250,7 +274,7 @@ def create_default_user():
         logger.error(f"User creation failed: {e}", exc_info=True)
         return False
 
-    if not add_ollama_models(user_id):
+    if not ensure_ollama_models(user_id):
         logger.warning("Ollama model registration failed — user can add via UI.")
     if not create_api_key(user_id):
         logger.warning("API key creation failed — user can create via UI.")

@@ -122,18 +122,101 @@ def ensure_ollama_models(tenant_id):
         return False
 
 
+def _desired_llamacpp_models():
+    """Build (model_type, llm_name, max_tokens) tuples for our llama-swap stack."""
+    chat_model = os.environ.get('LLAMACPP_CHAT_MODEL', '').strip()
+    embedding_model = os.environ.get('LLAMACPP_EMBEDDING_MODEL', '').strip()
+    desired = []
+    if chat_model:
+        # 32k context matches llama-swap config; max_tokens here is the per-call cap.
+        desired.append(("chat", chat_model, 32768))
+    if embedding_model:
+        desired.append(("embedding", embedding_model, 8192))
+    return desired
+
+
+def ensure_llamacpp_models(tenant_id):
+    """Register llama-swap models under the OpenAI-API-Compatible factory.
+    Per-model idempotent."""
+    try:
+        from api.db.services.tenant_llm_service import TenantLLMService
+    except ImportError as e:
+        logger.error(f"Cannot import TenantLLMService: {e}")
+        return False
+
+    desired = _desired_llamacpp_models()
+    if not desired:
+        logger.info("No llama-swap models configured (LLAMACPP_* unset) — skipping.")
+        return True
+
+    try:
+        existing = TenantLLMService.query(tenant_id=tenant_id, llm_factory="OpenAI-API-Compatible")
+        existing_names = {row.llm_name for row in existing}
+    except Exception as e:
+        logger.warning(f"Could not query existing OpenAI-API-Compatible models: {e}")
+        existing_names = set()
+
+    base = os.environ.get('LLAMACPP_BASE_URL', 'http://host.docker.internal:8080/v1').strip()
+    to_insert = []
+    for model_type, llm_name, max_tokens in desired:
+        if llm_name in existing_names:
+            continue
+        to_insert.append({
+            "tenant_id": tenant_id,
+            "llm_factory": "OpenAI-API-Compatible",
+            "model_type": model_type,
+            "llm_name": llm_name,
+            # api_key is required by RagFlow's validator even though llama-swap doesn't check it.
+            "api_key": "dummy",
+            "api_base": base,
+            "max_tokens": max_tokens,
+            "used_tokens": 0,
+            "status": "1",
+        })
+        logger.info(f"  + {model_type}: {llm_name} (OpenAI-API-Compatible @ {base})")
+
+    if not to_insert:
+        logger.info(f"Tenant {tenant_id} already has all llama-swap models — skipping.")
+        return True
+
+    try:
+        if not TenantLLMService.insert_many(to_insert):
+            raise Exception("TenantLLMService.insert_many() returned False")
+        logger.info(f"Registered {len(to_insert)} llama-swap model(s) for tenant {tenant_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to register llama-swap models: {e}")
+        return False
+
+
+def _primary_model_ids():
+    """Resolve the primary tenant.{llm,embd,img2txt}_id values.
+    llama-swap (OpenAI-API-Compatible) takes precedence over Ollama; VLM stays on
+    Ollama until mmproj migration."""
+    llama_chat = os.environ.get('LLAMACPP_CHAT_MODEL', '').strip()
+    llama_embed = os.environ.get('LLAMACPP_EMBEDDING_MODEL', '').strip()
+    ollama_chat = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
+    ollama_embed = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
+    ollama_vlm = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
+
+    llm_id = (f"{llama_chat}@OpenAI-API-Compatible" if llama_chat
+              else (f"{ollama_chat}@Ollama" if ollama_chat else ""))
+    embd_id = (f"{llama_embed}@OpenAI-API-Compatible" if llama_embed
+               else (f"{ollama_embed}@Ollama" if ollama_embed else ""))
+    img2txt_id = f"{ollama_vlm}@Ollama" if ollama_vlm else ""
+    return llm_id, embd_id, img2txt_id
+
+
 def ensure_tenant_default_models(tenant_id):
-    """Set tenant.llm_id / embd_id / img2txt_id if empty, based on env vars.
-    Idempotent: skips already-set fields."""
+    """Set tenant.{llm,embd,img2txt}_id to the resolved primary, only if empty.
+    Idempotent: doesn't overwrite manual UI changes."""
     try:
         from api.db.services.user_service import TenantService
     except ImportError as e:
         logger.warning(f"Cannot import TenantService: {e}")
         return False
 
-    chat_model = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
-    embedding_model = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
-    vision_model = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
+    llm_id, embd_id, img2txt_id = _primary_model_ids()
 
     try:
         rows = TenantService.query(id=tenant_id)
@@ -141,12 +224,12 @@ def ensure_tenant_default_models(tenant_id):
             return False
         t = rows[0]
         updates = {}
-        if chat_model and not (t.llm_id or '').strip():
-            updates['llm_id'] = f"{chat_model}@Ollama"
-        if embedding_model and not (t.embd_id or '').strip():
-            updates['embd_id'] = f"{embedding_model}@Ollama"
-        if vision_model and not (t.img2txt_id or '').strip():
-            updates['img2txt_id'] = f"{vision_model}@Ollama"
+        if llm_id and not (t.llm_id or '').strip():
+            updates['llm_id'] = llm_id
+        if embd_id and not (t.embd_id or '').strip():
+            updates['embd_id'] = embd_id
+        if img2txt_id and not (t.img2txt_id or '').strip():
+            updates['img2txt_id'] = img2txt_id
         if not updates:
             return True
         for k, v in updates.items():
@@ -253,6 +336,7 @@ def create_default_user():
         first = users[0]
         # Idempotent re-checks on every boot
         ensure_ollama_models(first.id)
+        ensure_llamacpp_models(first.id)
         ensure_tenant_default_models(first.id)
         ensure_user_access_token(first.id)
         return create_api_key(first.id)
@@ -261,9 +345,7 @@ def create_default_user():
     user_id = get_uuid()
     pw_b64 = base64.b64encode(password.encode()).decode()
 
-    chat_model = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
-    embedding_model = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
-    vision_model = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
+    llm_id, embd_id, img2txt_id = _primary_model_ids()
 
     user = {
         "id": user_id,
@@ -281,10 +363,10 @@ def create_default_user():
         "id": user_id,
         "name": f"{nickname}'s Kingdom",
         # tenant.<x>_id format: "model_name@factory_name"
-        "llm_id": f"{chat_model}@Ollama" if chat_model else "",
-        "embd_id": f"{embedding_model}@Ollama" if embedding_model else "",
+        "llm_id": llm_id,
+        "embd_id": embd_id,
         "asr_id": "",
-        "img2txt_id": f"{vision_model}@Ollama" if vision_model else "",
+        "img2txt_id": img2txt_id,
         "rerank_id": "",
         "parser_ids": getattr(settings, 'PARSERS', '') or
             "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,"
@@ -325,6 +407,8 @@ def create_default_user():
 
     if not ensure_ollama_models(user_id):
         logger.warning("Ollama model registration failed — user can add via UI.")
+    if not ensure_llamacpp_models(user_id):
+        logger.warning("llama-swap model registration failed — user can add via UI.")
     if not create_api_key(user_id):
         logger.warning("API key creation failed — user can create via UI.")
 

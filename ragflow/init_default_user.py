@@ -125,12 +125,16 @@ def ensure_ollama_models(tenant_id):
 def _desired_llamacpp_models():
     """Build (model_type, llm_name, max_tokens) tuples for our llama-swap stack."""
     chat_model = os.environ.get('LLAMACPP_CHAT_MODEL', '').strip()
+    additional_chat = os.environ.get('LLAMACPP_ADDITIONAL_CHAT_MODELS', '').strip()
     embedding_model = os.environ.get('LLAMACPP_EMBEDDING_MODEL', '').strip()
     vision_model = os.environ.get('LLAMACPP_VISION_MODEL', '').strip()
     desired = []
     if chat_model:
         # 32k context matches llama-swap config; max_tokens here is the per-call cap.
         desired.append(("chat", chat_model, 32768))
+    if additional_chat:
+        for name in [m.strip() for m in additional_chat.split(',') if m.strip()]:
+            desired.append(("chat", name, 32768))
     if embedding_model:
         desired.append(("embedding", embedding_model, 8192))
     if vision_model:

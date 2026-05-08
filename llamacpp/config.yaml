@@ -48,13 +48,44 @@ models:
     # physical batch, no rolling window like chat models.
     ttl: 0
 
-  # qwen3.6-35b (MoE successor to qwen3:30b-a3b) — REMOVED 2026-05-08:
-  # Ollama's GGUF for this model has `qwen35moe.rope.dimension_sections`
-  # array of length 3, but upstream llama.cpp expects 4. Non-portable.
-  # To enable: pull a compatible GGUF from a HuggingFace repo (e.g.,
-  # `Qwen/Qwen3-Next-80B-A3B-Instruct-GGUF` or compatible) once one is
-  # published with correct metadata; OR upgrade llama.cpp to a version
-  # that handles the 3-section variant.
+  qwen3.6-35b-a3b:
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/qwen3.6-35b-a3b.gguf
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      --ctx-size 32768
+      --batch-size 2048
+      --ubatch-size 512
+      --jinja
+    env:
+      - "AMD_VULKAN_ICD=RADV"
+    # MoE successor to qwen3-30b-a3b. Sourced from
+    # bartowski/Qwen_Qwen3.6-35B-A3B-GGUF (NOT Ollama — Ollama's variant has
+    # a non-portable rope.dimension_sections layout). Lazy-load (default ttl).
+
+  gemma4-26b-a4b:
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/gemma4-26b-a4b.gguf
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      --ctx-size 32768
+      --batch-size 2048
+      --ubatch-size 512
+      --jinja
+    env:
+      - "AMD_VULKAN_ICD=RADV"
+    # Gemma 4 26B-A4B (MoE, 3.8B active) — multimodal text+vision built-in.
+    # Sourced from bartowski/google_gemma-4-26B-A4B-it-GGUF.
 
   qwen3-vl-8b:
     cmd: |

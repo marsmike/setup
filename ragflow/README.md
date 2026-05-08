@@ -22,7 +22,14 @@ bash ubuntu/53_ragflow.sh
      - Persists `RAGFLOW_API_KEY` to the `api_token` table (idempotent).
      - Registers Ollama factory at `OLLAMA_BASE_URL`.
      - Adds `RAGFLOW_DEFAULT_CHAT_MODEL`, `RAGFLOW_DEFAULT_EMBEDDING_MODEL`,
-       and `RAGFLOW_ADDITIONAL_CHAT_MODELS` to the user's model list.
+       `RAGFLOW_DEFAULT_VISION_MODEL`, and `RAGFLOW_ADDITIONAL_CHAT_MODELS`
+       to the user's model list. Per-model idempotent — adding a new model to
+       env later is picked up on next boot without wiping existing ones.
+     - Sets `tenant.llm_id`, `tenant.embd_id`, `tenant.img2txt_id` from the
+       same env vars (only if currently empty).
+
+Ollama supports `chat`, `embedding`, and `image2text` (VLM). Reranker, ASR,
+and TTS are NOT in Ollama — they need a separate factory (e.g. Xinference).
 
 ## Files
 

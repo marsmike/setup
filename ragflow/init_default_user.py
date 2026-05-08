@@ -48,97 +48,114 @@ def wait_for_database(max_retries=40, retry_delay=3):
     return False
 
 
-def ensure_ollama_models(tenant_id):
-    """Add Ollama models only if none are registered yet for this tenant.
-    Idempotent: safe to call on every boot."""
-    try:
-        from api.db.services.tenant_llm_service import TenantLLMService
-    except ImportError as e:
-        logger.error(f"Cannot import TenantLLMService: {e}")
-        return False
-
-    try:
-        existing = TenantLLMService.query(tenant_id=tenant_id, llm_factory="Ollama")
-        if existing:
-            logger.info(f"Tenant {tenant_id} already has {len(existing)} Ollama model(s) — skipping.")
-            return True
-    except Exception as e:
-        logger.warning(f"Could not check existing Ollama models: {e}")
-
-    return add_ollama_models(tenant_id)
-
-
-def add_ollama_models(tenant_id):
-    """Register Ollama factory entries in tenant_llm for this tenant."""
-    try:
-        from api.db.services.tenant_llm_service import TenantLLMService
-    except ImportError as e:
-        logger.error(f"Cannot import TenantLLMService: {e}")
-        return False
-
-    ollama_base = os.environ.get('OLLAMA_BASE_URL', 'http://host.docker.internal:11434').strip()
+def _desired_ollama_models():
+    """Build the list of (model_type, llm_name, max_tokens) tuples from env."""
     chat_model = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
     embedding_model = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
+    vision_model = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
     additional = os.environ.get('RAGFLOW_ADDITIONAL_CHAT_MODELS', '').strip()
 
-    models = []
-
+    desired = []
     if chat_model:
-        models.append({
-            "tenant_id": tenant_id,
-            "llm_factory": "Ollama",
-            "model_type": "chat",
-            "llm_name": chat_model,
-            "api_key": "",
-            "api_base": ollama_base,
-            "max_tokens": 0,
-            "used_tokens": 0,
-            "status": "1",
-        })
-        logger.info(f"  + chat: {chat_model} (Ollama)")
-
+        desired.append(("chat", chat_model, 0))
     if additional:
         for name in [m.strip() for m in additional.split(',') if m.strip()]:
-            models.append({
-                "tenant_id": tenant_id,
-                "llm_factory": "Ollama",
-                "model_type": "chat",
-                "llm_name": name,
-                "api_key": "",
-                "api_base": ollama_base,
-                "max_tokens": 0,
-                "used_tokens": 0,
-                "status": "1",
-            })
-            logger.info(f"  + chat: {name} (Ollama)")
-
+            desired.append(("chat", name, 0))
     if embedding_model:
-        # max_tokens=8192 is critical — 0 truncates input to empty string
-        # (see ragflow-docker CLAUDE.md "Critical fix" note).
-        models.append({
-            "tenant_id": tenant_id,
-            "llm_factory": "Ollama",
-            "model_type": "embedding",
-            "llm_name": embedding_model,
-            "api_key": "",
-            "api_base": ollama_base,
-            "max_tokens": 8192,
-            "used_tokens": 0,
-            "status": "1",
-        })
-        logger.info(f"  + embedding: {embedding_model} (Ollama, max_tokens=8192)")
+        # max_tokens=8192 is critical — 0 truncates input to empty string.
+        desired.append(("embedding", embedding_model, 8192))
+    if vision_model:
+        desired.append(("image2text", vision_model, 0))
+    return desired
 
-    if not models:
+
+def ensure_ollama_models(tenant_id):
+    """Per-model idempotent: only insert Ollama models that aren't already registered.
+    Safe to call on every boot — picks up new models added to env over time."""
+    try:
+        from api.db.services.tenant_llm_service import TenantLLMService
+    except ImportError as e:
+        logger.error(f"Cannot import TenantLLMService: {e}")
+        return False
+
+    desired = _desired_ollama_models()
+    if not desired:
         logger.info("No Ollama models configured via env — skipping.")
         return True
 
     try:
-        if not TenantLLMService.insert_many(models):
+        existing = TenantLLMService.query(tenant_id=tenant_id, llm_factory="Ollama")
+        existing_names = {row.llm_name for row in existing}
+    except Exception as e:
+        logger.warning(f"Could not query existing Ollama models: {e}")
+        existing_names = set()
+
+    ollama_base = os.environ.get('OLLAMA_BASE_URL', 'http://host.docker.internal:11434').strip()
+    to_insert = []
+    for model_type, llm_name, max_tokens in desired:
+        if llm_name in existing_names:
+            continue
+        to_insert.append({
+            "tenant_id": tenant_id,
+            "llm_factory": "Ollama",
+            "model_type": model_type,
+            "llm_name": llm_name,
+            "api_key": "",
+            "api_base": ollama_base,
+            "max_tokens": max_tokens,
+            "used_tokens": 0,
+            "status": "1",
+        })
+        logger.info(f"  + {model_type}: {llm_name} (Ollama, max_tokens={max_tokens})")
+
+    if not to_insert:
+        logger.info(f"Tenant {tenant_id} already has all desired Ollama models ({len(existing_names)} present) — skipping.")
+        return True
+
+    try:
+        if not TenantLLMService.insert_many(to_insert):
             raise Exception("TenantLLMService.insert_many() returned False")
-        logger.info(f"Registered {len(models)} Ollama model(s) for tenant {tenant_id}")
+        logger.info(f"Registered {len(to_insert)} new Ollama model(s) for tenant {tenant_id}")
         return True
     except Exception as e:
         logger.error(f"Failed to register Ollama models: {e}")
+        return False
+
+
+def ensure_tenant_default_models(tenant_id):
+    """Set tenant.llm_id / embd_id / img2txt_id if empty, based on env vars.
+    Idempotent: skips already-set fields."""
+    try:
+        from api.db.services.user_service import TenantService
+    except ImportError as e:
+        logger.warning(f"Cannot import TenantService: {e}")
+        return False
+
+    chat_model = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
+    embedding_model = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
+    vision_model = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
+
+    try:
+        rows = TenantService.query(id=tenant_id)
+        if not rows:
+            return False
+        t = rows[0]
+        updates = {}
+        if chat_model and not (t.llm_id or '').strip():
+            updates['llm_id'] = f"{chat_model}@Ollama"
+        if embedding_model and not (t.embd_id or '').strip():
+            updates['embd_id'] = f"{embedding_model}@Ollama"
+        if vision_model and not (t.img2txt_id or '').strip():
+            updates['img2txt_id'] = f"{vision_model}@Ollama"
+        if not updates:
+            return True
+        for k, v in updates.items():
+            setattr(t, k, v)
+            logger.info(f"  ~ tenant.{k} = {v}")
+        t.save()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update tenant default models: {e}")
         return False
 
 
@@ -236,6 +253,7 @@ def create_default_user():
         first = users[0]
         # Idempotent re-checks on every boot
         ensure_ollama_models(first.id)
+        ensure_tenant_default_models(first.id)
         ensure_user_access_token(first.id)
         return create_api_key(first.id)
 
@@ -245,6 +263,7 @@ def create_default_user():
 
     chat_model = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
     embedding_model = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
+    vision_model = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
 
     user = {
         "id": user_id,
@@ -261,11 +280,11 @@ def create_default_user():
     tenant = {
         "id": user_id,
         "name": f"{nickname}'s Kingdom",
-        # tenant.llm_id format: "model_name@factory_name"
+        # tenant.<x>_id format: "model_name@factory_name"
         "llm_id": f"{chat_model}@Ollama" if chat_model else "",
         "embd_id": f"{embedding_model}@Ollama" if embedding_model else "",
         "asr_id": "",
-        "img2txt_id": "",
+        "img2txt_id": f"{vision_model}@Ollama" if vision_model else "",
         "rerank_id": "",
         "parser_ids": getattr(settings, 'PARSERS', '') or
             "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,"

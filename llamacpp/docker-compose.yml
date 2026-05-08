@@ -1,0 +1,36 @@
+# llama.cpp Vulkan + llama-swap on F3A
+#
+# Single OpenAI-compatible endpoint at :8080 fronting per-model llama-server
+# processes. Replaces Ollama as RagFlow's primary chat/embed backend (~4× prompt
+# eval on Qwen3-30B-A3B vs Ollama; see project_f3a_llm_stack.md).
+#
+# Hardware: AMD Radeon 890M (gfx1150, RDNA 3.5). Vulkan via RADV from the host's
+# /dev/dri/renderD128. Container runs unprivileged with explicit device mounts.
+
+services:
+  llama-swap:
+    image: ghcr.io/mostlygeek/llama-swap:vulkan-v211
+    container_name: llama-swap
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ${LLAMACPP_MODELS_DIR:-/home/mike/llama-models}:/models:ro
+      # Symlinks in /models point into Ollama's blob cache; mount it so they resolve.
+      - /usr/share/ollama:/usr/share/ollama:ro
+    devices:
+      - /dev/dri:/dev/dri
+    # GID 990 matches the host's render group (see `getent group render` on F3A).
+    group_add:
+      - "990"
+    environment:
+      - AMD_VULKAN_ICD=RADV
+      - LLAMA_ARG_HOST=0.0.0.0
+    command: ["-config", "/app/config.yaml", "-listen", ":8080"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped

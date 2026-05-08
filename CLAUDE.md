@@ -95,6 +95,23 @@ Logs are written to `~/.pipeline-test/logs/`.
 
 **`tools/10_claude_agents.sh`** is a backup copy. The canonical version lives at `~/work/agentic-toolkit-private/scripts/agents.sh`. Edits here are not picked up by the nightly cron. It manages a `claude` tmux session with windows: `ozzie` (WhatsApp bot), `top` (crowd dashboard), `kora` (remote-control agent).
 
+## llama.cpp Vulkan stack
+
+Self-contained stack lives at `llamacpp/` (top-level, mirrors `ragflow/`):
+single `llama-swap` container that fronts per-model `llama-server` processes
+on the AMD Radeon 890M iGPU via Vulkan/RADV. Replaces Ollama as RagFlow's
+chat/embed backend (~4× faster prompt-eval on Qwen3-30B-A3B; verified bench
+in memory `project_f3a_llm_stack.md`).
+
+- Run: `bash ubuntu/52_llamacpp_vulkan.sh` (thin launcher; also builds the
+  native `~/llama.cpp` for ad-hoc benching).
+- Endpoint: `http://192.168.1.13:8080` (OpenAI-compatible /v1).
+- Models in container: `qwen3-30b-a3b-q4_K_M` (chat), `bge-m3` (embedding).
+- VLM (`qwen3-vl:8b`) stays on Ollama for now — its `mmproj` packaging in
+  llama-server needs a separate migration step.
+- Ollama remains as a backup chat/embed provider; do not decommission until
+  the llama.cpp stack has run RagFlow's full RTCU dataset end-to-end.
+
 ## RagFlow
 
 Self-contained stack lives at `ragflow/` (top-level, mirrors `proxmox/`):

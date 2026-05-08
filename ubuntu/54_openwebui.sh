@@ -1,5 +1,5 @@
 #!/bin/bash
-# Open WebUI — Chat interface over Ollama
+# Open WebUI — Chat interface over llama-swap (primary) and Ollama (backup).
 # Runs as a standalone Docker container (independent of RagFlow).
 set -euo pipefail
 
@@ -12,14 +12,19 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
 fi
 
 # --- Start Open WebUI ---
+# Two backends: llama-swap (PRIMARY, OpenAI-compatible at :8080) and Ollama
+# (backup at :11434). Open WebUI lists models from BOTH endpoints and labels
+# them by source. With Ollama service stopped on the host the Ollama
+# discovery just times out silently — set ENABLE_OLLAMA_API=False to skip.
+#
 # HF_HUB_OFFLINE + TRANSFORMERS_OFFLINE: skip HuggingFace network calls at startup.
-# Models are cached in the volume; outbound internet from Docker containers is
-# blocked by the DOCKER-USER firewall rules added in 53_ragflow.sh.
 docker run -d \
   --name "$CONTAINER_NAME" \
   --restart always \
   -p 3000:8080 \
-  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -e OPENAI_API_BASE_URL="http://host.docker.internal:8080/v1" \
+  -e OPENAI_API_KEY="dummy" \
+  -e ENABLE_OLLAMA_API=False \
   -e WEBUI_AUTH=true \
   -e HF_HUB_OFFLINE=1 \
   -e TRANSFORMERS_OFFLINE=1 \
@@ -42,6 +47,7 @@ fi
 echo ""
 echo "================================================================"
 echo "Open WebUI: http://192.168.1.13:3000"
+echo "Backend:    llama-swap @ http://host.docker.internal:8080/v1"
+echo "Models:     qwen3-30b-a3b-q4_K_M (chat), bge-m3 (embed), qwen3-vl-8b (vision)"
 echo "First visit: create admin account."
-echo "Ollama models are auto-discovered from http://host.docker.internal:11434"
 echo "================================================================"

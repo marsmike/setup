@@ -40,12 +40,15 @@ timeout 30 bash -c 'until curl -s http://localhost:11434/api/tags >/dev/null 2>&
 echo "Ollama service status:"
 sudo systemctl is-active ollama
 
-# --- UFW: LAN access ---
-if ! sudo ufw status | grep -q "11434"; then
+# --- UFW: LAN access + Docker network access ---
+if ! sudo ufw status | grep -q "192.168.1.0/24.*11434\|11434.*192.168.1.0/24"; then
   sudo ufw allow from 192.168.1.0/24 to any port 11434 comment 'Ollama LAN'
-  echo "UFW rule added for :11434"
-else
-  echo "UFW rule for :11434 already exists"
+  echo "UFW rule added for :11434 LAN"
+fi
+# Allow Docker containers to reach Ollama (RagFlow, Open WebUI live in Docker networks)
+if ! sudo ufw status | grep -q "172.16.0.0/12.*11434\|11434.*172.16.0.0/12"; then
+  sudo ufw allow from 172.16.0.0/12 to any port 11434 comment 'Ollama from Docker networks'
+  echo "UFW rule added for :11434 Docker"
 fi
 
 # --- Pull models ---

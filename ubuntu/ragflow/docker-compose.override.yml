@@ -5,6 +5,7 @@ services:
       - TELEMETRY_ENABLED=false
       - RAGFLOW_ANALYTICS=false
       - DOC_INTELLIGENCE_ENDPOINT=
+      - LLM_TIMEOUT_SECONDS=120
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

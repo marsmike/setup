@@ -95,6 +95,20 @@ Logs are written to `~/.pipeline-test/logs/`.
 
 **`tools/10_claude_agents.sh`** is a backup copy. The canonical version lives at `~/work/agentic-toolkit-private/scripts/agents.sh`. Edits here are not picked up by the nightly cron. It manages a `claude` tmux session with windows: `ozzie` (WhatsApp bot), `top` (crowd dashboard), `kora` (remote-control agent).
 
+## RagFlow
+
+Self-contained stack lives at `ragflow/` (top-level, mirrors `proxmox/`):
+pinned `infiniflow/ragflow:v0.25.1` Docker image, custom entrypoint, and
+a Python init script that auto-creates one admin user, persists a stable
+`RAGFLOW_API_KEY`, and registers Ollama as the LLM provider on first boot.
+
+- Run from F3A: `bash ubuntu/53_ragflow.sh` (thin launcher).
+- Variables read from repo-root `.env` (see `.env.example` for the full list).
+- Reset state: `cd ragflow && docker compose down -v`.
+- Inspired by `~/work/ragflow-docker` (multi-instance Bosch deployment) but
+  trimmed for single-user, Ollama-only, private-LAN deployment. No UFW
+  outbound block — F3A is on a private LAN.
+
 ## Proxmox
 
 ```bash

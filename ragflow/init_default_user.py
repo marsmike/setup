@@ -142,6 +142,32 @@ def add_ollama_models(tenant_id):
         return False
 
 
+def ensure_user_access_token(user_id):
+    """Ensure user.access_token is non-empty. Required for api_token-based auth
+    (api/apps/__init__.py:_load_user falls back to api_token but rejects users
+    whose access_token is empty)."""
+    try:
+        from api.db.services.user_service import UserService
+    except ImportError as e:
+        logger.warning(f"Cannot import UserService: {e}")
+        return False
+    try:
+        users = UserService.query(id=user_id)
+        if not users:
+            logger.warning(f"User {user_id} not found — cannot set access_token.")
+            return False
+        u = users[0]
+        if u.access_token and u.access_token.strip():
+            return True
+        u.access_token = get_uuid()
+        u.save()
+        logger.info(f"Set access_token on user {user_id} to enable api_token auth.")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to set user.access_token: {e}")
+        return False
+
+
 def create_api_key(tenant_id):
     """Persist RAGFLOW_API_KEY to api_token table. Idempotent."""
     api_key = os.environ.get('RAGFLOW_API_KEY', '').strip()
@@ -210,6 +236,7 @@ def create_default_user():
         first = users[0]
         # Idempotent re-checks on every boot
         ensure_ollama_models(first.id)
+        ensure_user_access_token(first.id)
         return create_api_key(first.id)
 
     logger.info(f"No users found. Creating admin user {email}...")
@@ -224,6 +251,9 @@ def create_default_user():
         "email": email,
         "nickname": nickname,
         "password": pw_b64,
+        # access_token must be non-empty for the api_token fallback auth path
+        # to succeed (api/apps/__init__.py:_load_user). Value can be any 32+ string.
+        "access_token": get_uuid(),
         "status": 1,
         "is_superuser": True,
         "login_channel": "password",

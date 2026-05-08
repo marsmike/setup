@@ -112,9 +112,9 @@ def ensure_ollama_models(tenant_id):
         logger.info(f"Tenant {tenant_id} already has all desired Ollama models ({len(existing_names)} present) — skipping.")
         return True
 
+    # RagFlow's TenantLLMService.insert_many returns None on success — don't check return.
     try:
-        if not TenantLLMService.insert_many(to_insert):
-            raise Exception("TenantLLMService.insert_many() returned False")
+        TenantLLMService.insert_many(to_insert)
         logger.info(f"Registered {len(to_insert)} new Ollama model(s) for tenant {tenant_id}")
         return True
     except Exception as e:
@@ -126,12 +126,15 @@ def _desired_llamacpp_models():
     """Build (model_type, llm_name, max_tokens) tuples for our llama-swap stack."""
     chat_model = os.environ.get('LLAMACPP_CHAT_MODEL', '').strip()
     embedding_model = os.environ.get('LLAMACPP_EMBEDDING_MODEL', '').strip()
+    vision_model = os.environ.get('LLAMACPP_VISION_MODEL', '').strip()
     desired = []
     if chat_model:
         # 32k context matches llama-swap config; max_tokens here is the per-call cap.
         desired.append(("chat", chat_model, 32768))
     if embedding_model:
         desired.append(("embedding", embedding_model, 8192))
+    if vision_model:
+        desired.append(("image2text", vision_model, 32768))
     return desired
 
 
@@ -180,8 +183,7 @@ def ensure_llamacpp_models(tenant_id):
         return True
 
     try:
-        if not TenantLLMService.insert_many(to_insert):
-            raise Exception("TenantLLMService.insert_many() returned False")
+        TenantLLMService.insert_many(to_insert)
         logger.info(f"Registered {len(to_insert)} llama-swap model(s) for tenant {tenant_id}")
         return True
     except Exception as e:
@@ -195,6 +197,7 @@ def _primary_model_ids():
     Ollama until mmproj migration."""
     llama_chat = os.environ.get('LLAMACPP_CHAT_MODEL', '').strip()
     llama_embed = os.environ.get('LLAMACPP_EMBEDDING_MODEL', '').strip()
+    llama_vlm = os.environ.get('LLAMACPP_VISION_MODEL', '').strip()
     ollama_chat = os.environ.get('RAGFLOW_DEFAULT_CHAT_MODEL', '').strip()
     ollama_embed = os.environ.get('RAGFLOW_DEFAULT_EMBEDDING_MODEL', '').strip()
     ollama_vlm = os.environ.get('RAGFLOW_DEFAULT_VISION_MODEL', '').strip()
@@ -203,7 +206,8 @@ def _primary_model_ids():
               else (f"{ollama_chat}@Ollama" if ollama_chat else ""))
     embd_id = (f"{llama_embed}@OpenAI-API-Compatible" if llama_embed
                else (f"{ollama_embed}@Ollama" if ollama_embed else ""))
-    img2txt_id = f"{ollama_vlm}@Ollama" if ollama_vlm else ""
+    img2txt_id = (f"{llama_vlm}@OpenAI-API-Compatible" if llama_vlm
+                  else (f"{ollama_vlm}@Ollama" if ollama_vlm else ""))
     return llm_id, embd_id, img2txt_id
 
 

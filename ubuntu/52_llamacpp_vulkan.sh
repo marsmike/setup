@@ -66,6 +66,20 @@ stage_blob /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library
 stage_blob /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/bge-m3/latest \
   bge-m3.gguf
 
+# qwen3-vl-8b — Ollama bundles the vision tower differently than llama-server expects,
+# so we pull a separate GGUF + mmproj from the official HF repo. ~5.8 GB total, one-time.
+fetch_hf() {
+  local url="$1" target="$HOME/llama-models/$2"
+  if [ ! -e "$target" ]; then
+    echo "  pulling: $2 (~$(curl -sI "$url" | awk '/[Cc]ontent-[Ll]ength/{printf "%.1f GB", $2/1e9}'))"
+    curl -fL --progress-bar -o "$target" "$url"
+  fi
+}
+fetch_hf https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf \
+  qwen3-vl-8b-q4_K_M.gguf
+fetch_hf https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-8B-Instruct-Q8_0.gguf \
+  qwen3-vl-8b-mmproj-q8_0.gguf
+
 # ── 4. UFW: LAN access on :8080 ──
 if command -v ufw >/dev/null 2>&1; then
   if ! sudo ufw status | grep -q " 8080.*192.168.1.0/24"; then

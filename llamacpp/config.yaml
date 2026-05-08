@@ -47,3 +47,24 @@ models:
     # batch-size must equal ctx-size for embeddings: the whole input runs in one
     # physical batch, no rolling window like chat models.
     ttl: 0
+
+  qwen3-vl-8b:
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/qwen3-vl-8b-q4_K_M.gguf
+      --mmproj /models/qwen3-vl-8b-mmproj-q8_0.gguf
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      --ctx-size 32768
+      --batch-size 2048
+      --ubatch-size 512
+      --jinja
+    env:
+      - "AMD_VULKAN_ICD=RADV"
+    # VLM — RagFlow uses this for figure captioning during PDF parsing
+    # (parser_config.image_context_size > 0). Lazy-load: ttl unset (default
+    # ~5min eviction) since RAG queries don't normally invoke it.

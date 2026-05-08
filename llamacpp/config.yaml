@@ -48,6 +48,26 @@ models:
     # physical batch, no rolling window like chat models.
     ttl: 0
 
+  qwen3.6-35b:
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/qwen3.6-35b.gguf
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      --ctx-size 32768
+      --batch-size 2048
+      --ubatch-size 512
+      --jinja
+    env:
+      - "AMD_VULKAN_ICD=RADV"
+    # MoE successor to qwen3:30b-a3b — more capable, ~38% slower at gen.
+    # Lazy-load (default ttl) since it's not the primary; eviction reclaims
+    # 23 GB iGPU memory when idle.
+
   qwen3-vl-8b:
     cmd: |
       /app/llama-server

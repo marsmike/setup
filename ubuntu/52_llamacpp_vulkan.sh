@@ -65,6 +65,9 @@ stage_blob /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library
   qwen3-30b-a3b-q4_K_M.gguf
 stage_blob /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/bge-m3/latest \
   bge-m3.gguf
+# qwen3.6-35b — MoE successor, 23 GB. Lazy-loaded by llama-swap.
+stage_blob /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/qwen3.6/35b \
+  qwen3.6-35b.gguf
 
 # qwen3-vl-8b — Ollama bundles the vision tower differently than llama-server expects,
 # so we pull a separate GGUF + mmproj from the official HF repo. ~5.8 GB total, one-time.

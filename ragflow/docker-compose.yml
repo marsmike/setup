@@ -1,0 +1,140 @@
+# Self-contained RagFlow stack — pinned to v0.25.1.
+# Drops profiles, extra services, and multi-instance machinery from upstream.
+
+services:
+  ragflow:
+    image: infiniflow/ragflow:v0.25.1
+    container_name: ragflow-server
+    depends_on:
+      mysql:
+        condition: service_healthy
+      es01:
+        condition: service_started
+      minio:
+        condition: service_started
+      redis:
+        condition: service_started
+    entrypoint: ["/ragflow/entrypoint.sh"]
+    ports:
+      - "${SVR_HTTP_PORT:-9380}:9380"
+      - "80:80"
+    env_file: ../.env
+    environment:
+      - TZ=${TIMEZONE:-Europe/Berlin}
+      - TELEMETRY_ENABLED=false
+      - RAGFLOW_ANALYTICS=false
+      - DOC_INTELLIGENCE_ENDPOINT=
+      - LLM_TIMEOUT_SECONDS=120
+      - TIKTOKEN_CACHE_DIR=/root/.tiktoken
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./entrypoint.sh:/ragflow/entrypoint.sh
+      - ./init_default_user.py:/ragflow/init_default_user.py
+      - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+      - ragflow-logs:/ragflow/logs
+      - ragflow-tiktoken:/root/.tiktoken
+    networks:
+      - ragflow
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0.39
+    container_name: ragflow-mysql
+    env_file: ../.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD:-infini_rag_flow}
+      - TZ=${TIMEZONE:-Europe/Berlin}
+    command: >
+      --max_connections=1000
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --tls_version=TLSv1.2,TLSv1.3
+      --init-file=/data/application/init.sql
+      --binlog_expire_logs_seconds=604800
+    ports:
+      - "${MYSQL_PORT:-5455}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/data/application/init.sql
+    networks:
+      - ragflow
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${MYSQL_PASSWORD:-infini_rag_flow}"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+  es01:
+    image: elasticsearch:8.11.3
+    container_name: ragflow-es01
+    env_file: ../.env
+    environment:
+      - node.name=es01
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-infini_rag_flow}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+      - ES_JAVA_OPTS=-Xms4g -Xmx8g
+      - TZ=${TIMEZONE:-Europe/Berlin}
+    ports:
+      - "${ES_PORT:-1200}:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - ragflow
+    restart: unless-stopped
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
+    container_name: ragflow-minio
+    command: server --console-address ":9001" /data
+    env_file: ../.env
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-rag_flow}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-infini_rag_flow}
+      - TZ=${TIMEZONE:-Europe/Berlin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ragflow
+    restart: unless-stopped
+
+  redis:
+    image: valkey/valkey:8
+    container_name: ragflow-redis
+    command: valkey-server --requirepass ${REDIS_PASSWORD:-infini_rag_flow} --maxmemory 128mb --maxmemory-policy allkeys-lru
+    env_file: ../.env
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ragflow
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  esdata:
+  minio_data:
+  redis_data:
+  ragflow-logs:
+  ragflow-tiktoken:
+
+networks:
+  ragflow:
+    driver: bridge

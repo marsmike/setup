@@ -46,6 +46,18 @@ if ! grep -q "# === Privacy overrides from 53_ragflow.sh ===" .env; then
   grep -v "^#" "$SCRIPT_DIR/ragflow/ragflow.env" | grep -v "^$" >> .env
 fi
 
+# --- Persist API key if provided via environment ---
+# Set RAGFLOW_API_KEY in the repo .env before running this script.
+# The key is generated in RagFlow UI: Settings → API → create key.
+if [ -n "${RAGFLOW_API_KEY:-}" ]; then
+  if ! grep -q "^RAGFLOW_API_KEY=" .env 2>/dev/null; then
+    echo "RAGFLOW_API_KEY=${RAGFLOW_API_KEY}" >> .env
+    echo "RAGFLOW_API_KEY saved to ~/ragflow/.env"
+  else
+    echo "RAGFLOW_API_KEY already set in .env"
+  fi
+fi
+
 # --- Copy our docker-compose override ---
 cp "$SCRIPT_DIR/ragflow/docker-compose.override.yml" ./docker-compose.override.yml
 

@@ -23,6 +23,8 @@ cat <<'EOF' | sudo tee "$OVERRIDE_DIR/override.conf" > /dev/null
 [Service]
 Environment="ROCR_VISIBLE_DEVICES=0"
 Environment="OLLAMA_FLASH_ATTENTION=1"
+Environment="OLLAMA_KV_CACHE_TYPE=q8_0"
+Environment="HSA_ENABLE_SDMA=0"
 Environment="OLLAMA_NUM_PARALLEL=1"
 Environment="OLLAMA_HOST=0.0.0.0:11434"
 EOF
@@ -47,12 +49,19 @@ else
 fi
 
 # --- Pull models ---
+# Benchmarks (F3A, Radeon 890M, May 2026, q8_0 KV cache):
+#   qwen3:30b-a3b-q4_K_M  29.7 t/s  primary, best speed/quality
+#   gemma4:e4b            22.6 t/s  small multimodal (text+image+audio)
+#   qwen3.6:35b           18.5 t/s  most capable, uses 34GB GPU with 256K ctx
+#   phi4:14b               8.3 t/s  dense 14B, bandwidth-bound — optional
+#   gemma3:27b-it-q4_K_M   4.2 t/s  dense 27B, very slow — skip
+#
 # Verify exact tags at https://ollama.com/library before running.
-# Tags below are current as of May 2026 — update if ollama pull fails.
 for model in \
   "bge-m3" \
   "qwen3:30b-a3b-q4_K_M" \
-  "gemma3:27b-it-q4_K_M"
+  "gemma4:e4b" \
+  "qwen3.6:35b"
 do
   if ollama list | grep -q "^${model}"; then
     echo "Model already present: ${model}"
@@ -64,8 +73,8 @@ done
 
 # --- Smoke test ---
 echo ""
-echo "Smoke test (gemma3:27b, 10 tokens):"
-ollama run gemma3:27b-it-q4_K_M "Reply with exactly: ok" --nowordwrap 2>/dev/null || \
+echo "Smoke test (qwen3:30b-a3b, 10 tokens):"
+ollama run qwen3:30b-a3b-q4_K_M "/no_think Reply with exactly: ok" --nowordwrap 2>/dev/null || \
   echo "WARNING: smoke test failed — check model tag"
 
 echo ""

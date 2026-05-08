@@ -1,7 +1,7 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
 # BACKUP COPY — not authoritative.
-# Canonical version lives at: ~/work/agentic-toolkit/scripts/agents.sh
+# Canonical version lives at: ~/work/agentic-toolkit-private/scripts/agents.sh
 # The nightly restart cron invokes that path; edits here are NOT picked up.
 # -----------------------------------------------------------------------------
 # Spawn persistent Claude Code sessions inside tmux with auto-setup.
@@ -28,13 +28,18 @@ set -euo pipefail
 SESSION="claude"
 LOGFILE="$HOME/.claude/claude-agents.log"
 TMUX="/usr/bin/tmux"
-CLAUDE="$HOME/.local/bin/claude --model claude-sonnet-4-6"
+CLAUDE_BIN="$HOME/.local/bin/claude"
+# Model routing: ~/.env sets ANTHROPIC_BASE_URL=OpenRouter + ANTHROPIC_API_KEY (never expires)
+# Bot/reactive (cheap):  Haiku or deepseek/deepseek-chat (via OpenRouter)
+# Agent/workload (capable): Sonnet — also used by crowd-spawned workers via CLAUDE_CODE_SUBAGENT_MODEL
+CLAUDE_HAIKU="$CLAUDE_BIN --model claude-haiku-4-5-20251001"
+CLAUDE_SONNET="$CLAUDE_BIN --model claude-sonnet-4-6"
 MAX_RETRIES=5
 RETRY_WAIT=1800  # 30 minutes
 
 # WhatsApp alert config (works independently — bridge is a systemd service)
 ALERT_JID="191078917525692@lid"
-WA_SCRIPT="$HOME/work/agentic-toolkit/whatsapp/scripts/wa.sh"
+WA_SCRIPT="$HOME/work/agentic-toolkit-private/whatsapp/scripts/wa.sh"
 
 # Window definitions — pipe-separated: name|workdir|command[|post_cmd_1|post_cmd_2|...]
 # If command starts with "claude", it's treated as a Claude instance
@@ -44,11 +49,11 @@ WA_SCRIPT="$HOME/work/agentic-toolkit/whatsapp/scripts/wa.sh"
 # top    — crowd-top live dashboard
 # kora   — remote-control agent (push commands from phone)
 WINDOWS=(
-  "ozzie|$HOME/work/bot|$CLAUDE --dangerously-skip-permissions|/whatsapp-start"
-  "top|$HOME/work/agentic-toolkit|crowd/scripts/crowd-top"
-  "kora|$HOME/work/kora|$CLAUDE --dangerously-skip-permissions|/remote-control"
-  # "xena|$HOME/work/xena|$CLAUDE"
-  # "bibi|$HOME/work/bibi|$CLAUDE"
+  "ozzie|$HOME/work/bot|$CLAUDE_SONNET --dangerously-skip-permissions|/whatsapp-start"
+  "top|$HOME/work/agentic-toolkit-private|crowd/scripts/crowd-top"
+  "kora|$HOME/work/kora|$CLAUDE_SONNET --dangerously-skip-permissions|/remote-control"
+  # "xena|$HOME/work/xena|$CLAUDE_SONNET"
+  # "bibi|$HOME/work/bibi|$CLAUDE_SONNET"
 )
 
 # Cron marker used for idempotent install/remove
@@ -442,7 +447,7 @@ do_start() {
 pull_repos() {
   log "Pulling latest code..."
   local repos=(
-    "$HOME/work/agentic-toolkit"
+    "$HOME/work/agentic-toolkit-private"
     "$HOME/work/setup"
   )
   for repo in "${repos[@]}"; do
@@ -452,6 +457,14 @@ pull_repos() {
       log "  $(basename "$repo"): $out"
     fi
   done
+
+  # Pull marketplace clone so plugins reflect latest private repo.
+  local marketplace_dir="$HOME/.claude/plugins/marketplaces/agentic-toolkit"
+  if [[ -d "$marketplace_dir/.git" ]]; then
+    local mout
+    mout=$(cd "$marketplace_dir" && git pull --ff-only 2>&1) || true
+    log "  marketplace: $mout"
+  fi
 
   # Bust the plugin cache so Claude picks up new skill/command versions.
   # Claude Code regenerates the cache on next startup from the marketplace source.

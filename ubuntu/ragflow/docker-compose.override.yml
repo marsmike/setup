@@ -11,9 +11,9 @@ services:
     volumes:
       - ragflow-tiktoken:/root/.tiktoken
 
-volumes:
-  ragflow-tiktoken:
-
   es01:
     environment:
       - ES_JAVA_OPTS=-Xms4g -Xmx8g
+
+volumes:
+  ragflow-tiktoken:

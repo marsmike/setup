@@ -9,7 +9,9 @@
 
 services:
   llama-swap:
-    image: ghcr.io/mostlygeek/llama-swap:vulkan-v211
+    # Floating tag is the only stable one — versioned tags use `v<N>-vulkan-b<llamacpp>`
+    # which is opaque. Pin to a digest after we verify perf parity (Task #20).
+    image: ghcr.io/mostlygeek/llama-swap:vulkan
     container_name: llama-swap
     ports:
       - "8080:8080"

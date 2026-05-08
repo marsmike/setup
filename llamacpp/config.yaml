@@ -9,47 +9,41 @@
 # Add a model: drop a .gguf (or symlink to one) into ~/llama-models, add a
 # block here, restart the stack: `docker compose restart`.
 
-# Common llama-server invocation. ${MODEL_PATH} and ${PORT} are llama-swap macros.
-macros:
-  llama-base: >-
-    /usr/local/bin/llama-server
-    --host 0.0.0.0
-    --port ${PORT}
-    --model ${MODEL_PATH}
-    -ngl 99
-    --jinja
-
 models:
   qwen3-30b-a3b-q4_K_M:
-    name: qwen3-30b-a3b-q4_K_M
-    cmd: >-
-      ${llama-base}
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/qwen3-30b-a3b-q4_K_M.gguf
+      -ngl 99
       -fa on
       -ctk q8_0
       -ctv q8_0
       --ctx-size 32768
       --batch-size 2048
       --ubatch-size 512
+      --jinja
     env:
-      - "MODEL_PATH=/models/qwen3-30b-a3b-q4_K_M.gguf"
       - "AMD_VULKAN_ICD=RADV"
     # Stay loaded — primary chat for RagFlow. Avoid swap thrash on the iGPU.
     ttl: 0
 
   bge-m3:
-    name: bge-m3
-    cmd: >-
-      /usr/local/bin/llama-server
+    cmd: |
+      /app/llama-server
       --host 0.0.0.0
       --port ${PORT}
-      --model ${MODEL_PATH}
+      --model /models/bge-m3.gguf
       -ngl 99
       --embeddings
       --pooling mean
       --ctx-size 8192
-      --batch-size 512
+      --batch-size 8192
+      --ubatch-size 8192
     env:
-      - "MODEL_PATH=/models/bge-m3.gguf"
       - "AMD_VULKAN_ICD=RADV"
     # Persistent embedding model — RagFlow hits this constantly during indexing.
+    # batch-size must equal ctx-size for embeddings: the whole input runs in one
+    # physical batch, no rolling window like chat models.
     ttl: 0

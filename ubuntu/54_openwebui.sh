@@ -18,6 +18,25 @@ fi
 # discovery just times out silently — set ENABLE_OLLAMA_API=False to skip.
 #
 # HF_HUB_OFFLINE + TRANSFORMERS_OFFLINE: skip HuggingFace network calls at startup.
+# Pre-register the RagFlow MCP server as an external tool. Open WebUI parses
+# this JSON on startup; PersistentConfig then keeps it in the DB. Override
+# RAGFLOW_API_KEY/URL via .env if they differ.
+RAGFLOW_MCP_URL="${RAGFLOW_MCP_URL:-http://host.docker.internal:9382}"
+RAGFLOW_MCP_KEY="${RAGFLOW_API_KEY:-}"
+TOOL_SERVERS_JSON='[]'
+if [ -n "$RAGFLOW_MCP_KEY" ]; then
+  TOOL_SERVERS_JSON=$(python3 -c "
+import json
+print(json.dumps([{
+    'url': '$RAGFLOW_MCP_URL',
+    'path': '/mcp/',
+    'type': 'mcp',
+    'auth_type': 'bearer',
+    'key': '$RAGFLOW_MCP_KEY',
+    'config': {'enable': True, 'name': 'RagFlow MCP (F3A)'},
+}]))")
+fi
+
 docker run -d \
   --name "$CONTAINER_NAME" \
   --restart always \
@@ -28,6 +47,7 @@ docker run -d \
   -e WEBUI_AUTH=true \
   -e HF_HUB_OFFLINE=1 \
   -e TRANSFORMERS_OFFLINE=1 \
+  -e TOOL_SERVER_CONNECTIONS="$TOOL_SERVERS_JSON" \
   -v open-webui-data:/app/backend/data \
   --add-host host.docker.internal:host-gateway \
   ghcr.io/open-webui/open-webui:main

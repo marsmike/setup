@@ -20,10 +20,13 @@ set +a
 
 cd "$REPO_ROOT/ragflow"
 
-# Inbound from LAN only — RagFlow UI on port 80
+# Inbound from LAN only — RagFlow UI on port 80, MCP server on 9382
 if command -v ufw >/dev/null 2>&1; then
   if ! sudo ufw status | grep -q " 80 .*192.168.1.0/24"; then
     sudo ufw allow from 192.168.1.0/24 to any port 80 comment 'RagFlow LAN'
+  fi
+  if ! sudo ufw status | grep -q " 9382.*192.168.1.0/24"; then
+    sudo ufw allow from 192.168.1.0/24 to any port 9382 comment 'RagFlow MCP LAN'
   fi
 fi
 

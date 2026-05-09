@@ -68,4 +68,21 @@ done &
 echo "[entrypoint] starting one task_executor on host '${HOST_ID}'..."
 task_exe 0 "${HOST_ID}" &
 
+# -----------------------------------------------------------------------------
+# MCP server (self-host mode) — exposes ragflow_retrieval as an MCP tool over
+# Streamable HTTP at :9382/mcp. OpenWebUI / Claude Code can register this
+# endpoint as an external tool. API key matches the main RagFlow Bearer token.
+# -----------------------------------------------------------------------------
+if [ -f "/ragflow/mcp/server/server.py" ] && [ -n "${RAGFLOW_API_KEY:-}" ]; then
+    echo "[entrypoint] starting MCP server on :9382 (self-host mode)..."
+    "$PY" /ragflow/mcp/server/server.py \
+        --host=0.0.0.0 \
+        --port=9382 \
+        --base-url=http://127.0.0.1:9380 \
+        --mode=self-host \
+        --api-key="${RAGFLOW_API_KEY}" &
+else
+    echo "[entrypoint] MCP server skipped (server.py missing or RAGFLOW_API_KEY unset)"
+fi
+
 wait

@@ -91,6 +91,13 @@ fetch_hf https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF/resolve/main
 # gemma4-26b-a4b — Gemma 4 MoE (3.8B active), multimodal text+vision.
 fetch_hf https://huggingface.co/bartowski/google_gemma-4-26B-A4B-it-GGUF/resolve/main/google_gemma-4-26B-A4B-it-Q4_K_M.gguf \
   gemma4-26b-a4b.gguf
+# qwen3.6-27b — DENSE (slow on F3A, kept for completeness)
+fetch_hf https://huggingface.co/bartowski/Qwen_Qwen3.6-27B-GGUF/resolve/main/Qwen_Qwen3.6-27B-Q4_K_M.gguf \
+  qwen3.6-27b.gguf
+# qwen3-30b-a3b-instruct-2507 — July 2025 post-training refresh of qwen3-30b-a3b.
+# Same speed as the original (~34 t/s) but better instruction-tuning.
+fetch_hf https://huggingface.co/bartowski/Qwen_Qwen3-30B-A3B-Instruct-2507-GGUF/resolve/main/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf \
+  qwen3-30b-a3b-instruct-2507.gguf
 
 # ── 4. UFW: LAN access on :8080 ──
 if command -v ufw >/dev/null 2>&1; then

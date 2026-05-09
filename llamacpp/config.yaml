@@ -24,9 +24,13 @@ models:
       --batch-size 2048
       --ubatch-size 512
       --jinja
+      --reasoning off
     env:
       - "AMD_VULKAN_ICD=RADV"
     # Stay loaded — primary chat for RagFlow. Avoid swap thrash on the iGPU.
+    # --reasoning off is the server default for this Qwen3 model (no <think>
+    # tags burn tokens on every call). Override per-request via
+    # body.chat_template_kwargs.enable_thinking=true if a hard query needs it.
     ttl: 0
 
   bge-m3:
@@ -62,11 +66,33 @@ models:
       --batch-size 2048
       --ubatch-size 512
       --jinja
+      --reasoning off
     env:
       - "AMD_VULKAN_ICD=RADV"
     # MoE successor to qwen3-30b-a3b. Sourced from
     # bartowski/Qwen_Qwen3.6-35B-A3B-GGUF (NOT Ollama — Ollama's variant has
     # a non-portable rope.dimension_sections layout). Lazy-load (default ttl).
+
+  qwen3.6-27b:
+    cmd: |
+      /app/llama-server
+      --host 0.0.0.0
+      --port ${PORT}
+      --model /models/qwen3.6-27b.gguf
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      --ctx-size 32768
+      --batch-size 2048
+      --ubatch-size 512
+      --jinja
+      --reasoning off
+    env:
+      - "AMD_VULKAN_ICD=RADV"
+    # Qwen 3.6 27B (DENSE — not MoE). All 27B params active per token, so on
+    # F3A's ~100 GB/s LPDDR5X expect ~5-6 t/s gen (vs 33 t/s on the 30B-A3B
+    # MoE). Pulled from bartowski/Qwen_Qwen3.6-27B-GGUF.
 
   gemma4-26b-a4b:
     cmd: |

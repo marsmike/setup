@@ -115,8 +115,13 @@ bash linux/00_bootstrap.sh 192.168.1.50 --root-pass 'mypassword'
 
 ### 1. Copy and fill in secrets
 
+Single `.env` lives at `$HOME/.env` (canonical). Repo-root `.env` is a
+symlink to it.
+
 ```bash
-cp .env.example .env
+cp .env.example ~/.env
+chmod 600 ~/.env
+ln -sf ~/.env .env       # at the repo root
 # Fill in: PROXMOX_PASS, SSH_PUBLIC_KEY, USER_PASSWORD_HASH, DOTFILES_REPO
 ```
 

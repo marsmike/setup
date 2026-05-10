@@ -131,6 +131,27 @@ services:
       - ragflow
     restart: unless-stopped
 
+  # MinerU API server — CPU-only PDF parser with full pipeline (layout,
+  # reading order, multilingual OCR, tables, formulas). RagFlow calls it via
+  # MINERU_APISERVER. Image built locally from mineru/Dockerfile (the
+  # upstream Dockerfile is CUDA-only and unusable on F3A's AMD iGPU).
+  mineru-api:
+    image: ${MINERU_IMAGE:-mineru-cpu:3.1.11}
+    container_name: mineru-api
+    ports:
+      - "${MINERU_PORT:-8100}:8000"
+    volumes:
+      - mineru-models:/root/.cache/mineru
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/openapi.json -o /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    networks:
+      - ragflow
+    restart: unless-stopped
+
 volumes:
   mysql_data:
   esdata:
@@ -138,6 +159,7 @@ volumes:
   redis_data:
   ragflow-logs:
   ragflow-tiktoken:
+  mineru-models:
 
 networks:
   ragflow:

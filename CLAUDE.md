@@ -126,7 +126,7 @@ a Python init script that auto-creates one admin user, persists a stable
 `RAGFLOW_API_KEY`, and registers Ollama as the LLM provider on first boot.
 
 - Run from F3A: `bash ubuntu/53_ragflow.sh` (thin launcher).
-- Variables read from repo-root `.env` (see `.env.example` for the full list).
+- Variables read from `$HOME/.env` (see `.env.example` for the full list).
 - Reset state: `cd ragflow && docker compose down -v`.
 - Inspired by `~/work/ragflow-docker` (multi-instance Bosch deployment) but
   trimmed for single-user, Ollama-only, private-LAN deployment. No UFW
@@ -134,8 +134,9 @@ a Python init script that auto-creates one admin user, persists a stable
 
 ## Proxmox
 
+Proxmox uses the same canonical `~/.env` (with `PROXMOX_*` keys).
+
 ```bash
-cp proxmox/.env.example proxmox/.env
 ./proxmox/provision.sh --dry-run proxmox/vms/<name>.yaml
 ./proxmox/provision.sh proxmox/vms/<name>.yaml
 ```

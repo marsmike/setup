@@ -1,6 +1,6 @@
 #!/bin/bash
 # Provision a Proxmox VM from a YAML definition.
-# Reads proxmox/.env for secrets.
+# Reads $HOME/.env (canonical) or $REPO_ROOT/.env (back-compat) for secrets.
 #
 # Usage:
 #   ./proxmox/provision.sh proxmox/vms/ragflow.yaml
@@ -29,12 +29,13 @@ if [ ! -f "$VM_YAML" ]; then
   exit 1
 fi
 
-# --- Load secrets ---
-ENV_FILE="${REPO_ROOT}/.env"
+# --- Load secrets (canonical $HOME/.env, repo-root .env as back-compat) ---
+ENV_FILE="${HOME}/.env"
+[ ! -f "$ENV_FILE" ] && ENV_FILE="${REPO_ROOT}/.env"
 if [ ! -f "$ENV_FILE" ]; then
-  echo "ERROR: $ENV_FILE not found." >&2
-  echo "Run: cp ${REPO_ROOT}/.env.example ${REPO_ROOT}/.env" >&2
-  echo "Then fill in your secrets." >&2
+  echo "ERROR: no .env at \$HOME/.env or ${REPO_ROOT}/.env." >&2
+  echo "Run: cp ${REPO_ROOT}/.env.example ~/.env && chmod 600 ~/.env" >&2
+  echo "Then fill in PROXMOX_*, SSH_PUBLIC_KEY, USER_PASSWORD_HASH, etc." >&2
   exit 1
 fi
 set -o allexport

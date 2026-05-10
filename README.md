@@ -25,14 +25,22 @@ graph TD
 
 ## Quick Start
 
-### First: set up `.env`
+### First: set up `~/.env`
+
+All scripts read config from a single canonical file at `$HOME/.env`.
+The repo-root `.env` is a symlink to it (back-compat for docker-compose
+`env_file:` directives).
 
 ```bash
-cp .env.example .env
-# fill in SETUP_USER, SETUP_HOST, DOTFILES_REPO, GH_TOKEN
+cp .env.example ~/.env
+chmod 600 ~/.env
+ln -sf ~/.env .env       # at the repo root
+# Edit ~/.env: SETUP_USER, SETUP_HOST, DOTFILES_REPO, GH_TOKEN,
+#              RAGFLOW_API_KEY, LLAMACPP_*, etc.
 ```
 
-`.env` is sourced automatically by all scripts — no hardcoded usernames or tokens.
+There are no per-subdir `.env` files (no `proxmox/.env`, no `ragflow/.env`).
+Single source of truth at `~/.env`.
 
 ---
 
@@ -228,7 +236,7 @@ Steps performed:
 4. Harden sshd: key-only auth, no root login, no passwords
 5. Report: `Host secured. Connect with: ssh <user>@<host>`
 
-Reads credentials from `proxmox/.env` → `.env` → `linux/.env` (first found wins).
+Reads credentials from `~/.env` (canonical), with `$REPO_ROOT/.env` (the symlink) as fallback.
 
 ---
 

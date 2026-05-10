@@ -68,7 +68,7 @@ and IP. One YAML file per live VM in `vms/`.
 ```mermaid
 flowchart TD
     start(["./proxmox/provision.sh vms/ragflow.yaml"])
-    start --> secrets["Load proxmox/.env<br/>Validate SSH_PUBLIC_KEY,<br/>USER_PASSWORD_HASH, etc."]
+    start --> secrets["Load ~/.env<br/>Validate SSH_PUBLIC_KEY,<br/>USER_PASSWORD_HASH, etc."]
     secrets --> parse["Parse VM YAML with yq<br/>Merge profile + app defaults<br/>Resolve node IP from nodes.yaml"]
     parse --> render["Render cloudinit/base.yaml.tpl<br/>envsubst with explicit var list<br/>→ /tmp/ragflow-cloudinit.yaml"]
     render --> dryrun{{"--dry-run?"}}

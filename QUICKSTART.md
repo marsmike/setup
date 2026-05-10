@@ -1,5 +1,23 @@
 # Quick Start
 
+## One-time setup: `~/.env`
+
+All scripts read config from a single file at `$HOME/.env` (canonical).
+The repo-root `.env` is a symlink to it.
+
+```bash
+cp .env.example ~/.env
+chmod 600 ~/.env
+ln -sf ~/.env .env          # at the repo root, for docker-compose env_file
+```
+
+Edit `~/.env` and fill in `SETUP_USER`, `SETUP_HOST`, `RAGFLOW_API_KEY`,
+`LLAMACPP_*`, etc. — see `.env.example` for the full list.
+
+Don't create per-subdir `.env` files — everything sources from `~/.env`.
+
+---
+
 ## macOS
 
 ```bash

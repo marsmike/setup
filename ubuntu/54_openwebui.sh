@@ -18,24 +18,42 @@ fi
 # discovery just times out silently — set ENABLE_OLLAMA_API=False to skip.
 #
 # HF_HUB_OFFLINE + TRANSFORMERS_OFFLINE: skip HuggingFace network calls at startup.
-# Pre-register the RagFlow MCP server as an external tool. Open WebUI parses
-# this JSON on startup; PersistentConfig then keeps it in the DB. Override
-# RAGFLOW_API_KEY/URL via .env if they differ.
-RAGFLOW_MCP_URL="${RAGFLOW_MCP_URL:-http://host.docker.internal:9382}"
-RAGFLOW_MCP_KEY="${RAGFLOW_API_KEY:-}"
-TOOL_SERVERS_JSON='[]'
-if [ -n "$RAGFLOW_MCP_KEY" ]; then
-  TOOL_SERVERS_JSON=$(python3 -c "
-import json
-print(json.dumps([{
-    'url': '$RAGFLOW_MCP_URL',
-    'path': '/mcp/',
-    'type': 'mcp',
-    'auth_type': 'bearer',
-    'key': '$RAGFLOW_MCP_KEY',
-    'config': {'enable': True, 'name': 'RagFlow MCP (F3A)'},
-}]))")
-fi
+# Pre-register the RagFlow MCP servers as external tools. Open WebUI parses
+# this JSON on startup; PersistentConfig then keeps it in the DB.
+#   - Primary uses RAGFLOW_API_KEY (Mike's tenant) at port 9382.
+#   - Each entry in RAGFLOW_MCP_EXTRA_INSTANCES (comma-separated
+#     "name:port:apikey") becomes an additional MCP tool labelled by name.
+RAGFLOW_MCP_HOST="${RAGFLOW_MCP_HOST:-http://host.docker.internal}"
+TOOL_SERVERS_JSON=$(python3 - <<EOF
+import json, os
+servers = []
+key = os.environ.get('RAGFLOW_API_KEY', '').strip()
+host = os.environ.get('RAGFLOW_MCP_HOST', 'http://host.docker.internal').strip()
+if key:
+    servers.append({
+        'url': f'{host}:9382',
+        'path': '/mcp/',
+        'type': 'mcp',
+        'auth_type': 'bearer',
+        'key': key,
+        'config': {'enable': True, 'name': 'RagFlow MCP (Mike)'},
+    })
+extras = os.environ.get('RAGFLOW_MCP_EXTRA_INSTANCES', '').strip()
+for entry in [e.strip() for e in extras.split(',') if e.strip()]:
+    parts = entry.split(':', 2)
+    if len(parts) == 3:
+        name, port, k = parts
+        servers.append({
+            'url': f'{host}:{port}',
+            'path': '/mcp/',
+            'type': 'mcp',
+            'auth_type': 'bearer',
+            'key': k,
+            'config': {'enable': True, 'name': f'RagFlow MCP ({name})'},
+        })
+print(json.dumps(servers))
+EOF
+)
 
 docker run -d \
   --name "$CONTAINER_NAME" \

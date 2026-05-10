@@ -69,20 +69,37 @@ echo "[entrypoint] starting one task_executor on host '${HOST_ID}'..."
 task_exe 0 "${HOST_ID}" &
 
 # -----------------------------------------------------------------------------
-# MCP server (self-host mode) — exposes ragflow_retrieval as an MCP tool over
-# Streamable HTTP at :9382/mcp. OpenWebUI / Claude Code can register this
-# endpoint as an external tool. API key matches the main RagFlow Bearer token.
+# MCP server(s), self-host mode — one process per tenant API key.
+#   - Primary instance on :9382 uses RAGFLOW_API_KEY (Mike's tenant).
+#   - Extra instances from RAGFLOW_MCP_EXTRA_INSTANCES, comma-separated triples
+#     "name:port:apikey". Example:
+#       RAGFLOW_MCP_EXTRA_INSTANCES="claudia:9383:ragflow-claudia-..."
+#   Each MCP exposes ragflow_retrieval bound to its tenant's datasets.
 # -----------------------------------------------------------------------------
-if [ -f "/ragflow/mcp/server/server.py" ] && [ -n "${RAGFLOW_API_KEY:-}" ]; then
-    echo "[entrypoint] starting MCP server on :9382 (self-host mode)..."
+launch_mcp() {
+    local label="$1" port="$2" key="$3"
+    echo "[entrypoint] MCP[$label] starting on :$port..."
     "$PY" /ragflow/mcp/server/server.py \
         --host=0.0.0.0 \
-        --port=9382 \
+        --port="$port" \
         --base-url=http://127.0.0.1:9380 \
         --mode=self-host \
-        --api-key="${RAGFLOW_API_KEY}" &
+        --api-key="$key" &
+}
+
+if [ -f "/ragflow/mcp/server/server.py" ]; then
+    [ -n "${RAGFLOW_API_KEY:-}" ] && launch_mcp "primary" 9382 "$RAGFLOW_API_KEY" || \
+        echo "[entrypoint] MCP primary skipped (RAGFLOW_API_KEY unset)"
+    if [ -n "${RAGFLOW_MCP_EXTRA_INSTANCES:-}" ]; then
+        IFS=',' read -ra _MCPS <<< "${RAGFLOW_MCP_EXTRA_INSTANCES}"
+        for entry in "${_MCPS[@]}"; do
+            name="${entry%%:*}"; rest="${entry#*:}"
+            port="${rest%%:*}"; key="${rest#*:}"
+            [ -n "$name" ] && [ -n "$port" ] && [ -n "$key" ] && launch_mcp "$name" "$port" "$key"
+        done
+    fi
 else
-    echo "[entrypoint] MCP server skipped (server.py missing or RAGFLOW_API_KEY unset)"
+    echo "[entrypoint] /ragflow/mcp/server/server.py missing — no MCP servers"
 fi
 
 wait

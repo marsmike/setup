@@ -28,6 +28,9 @@ if command -v ufw >/dev/null 2>&1; then
   if ! sudo ufw status | grep -q " 9382.*192.168.1.0/24"; then
     sudo ufw allow from 192.168.1.0/24 to any port 9382 comment 'RagFlow MCP LAN'
   fi
+  if ! sudo ufw status | grep -q " 9383.*192.168.1.0/24"; then
+    sudo ufw allow from 192.168.1.0/24 to any port 9383 comment 'RagFlow MCP extra LAN'
+  fi
 fi
 
 # One-time cleanup: remove the old DOCKER-USER outbound block from earlier

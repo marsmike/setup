@@ -458,20 +458,27 @@ pull_repos() {
     fi
   done
 
-  # Pull marketplace clone so plugins reflect latest private repo.
-  local marketplace_dir="$HOME/.claude/plugins/marketplaces/agentic-toolkit-private"
-  if [[ -d "$marketplace_dir/.git" ]]; then
-    local mout
-    mout=$(cd "$marketplace_dir" && git pull --ff-only 2>&1) || true
-    log "  marketplace: $mout"
-  fi
-
-  # Bust the plugin cache so Claude picks up new skill/command versions.
-  # Claude Code regenerates the cache on next startup from the marketplace source.
-  local cache_dir="$HOME/.claude/plugins/cache/agentic-toolkit-private"
-  if [[ -d "$cache_dir" ]]; then
-    rm -rf "$cache_dir"
-    log "  Cleared plugin cache"
+  # Refresh every Claude Code marketplace clone (except the official one) and
+  # bust its plugin cache so the next session loads the new skill/command versions.
+  # Marketplace name on disk varies (e.g. "agentic-toolkit" vs "agentic-toolkit-private"),
+  # so iterate by directory rather than hard-coding the name.
+  local marketplaces_dir="$HOME/.claude/plugins/marketplaces"
+  local cache_root="$HOME/.claude/plugins/cache"
+  if [[ -d "$marketplaces_dir" ]]; then
+    for mp in "$marketplaces_dir"/*/; do
+      local name
+      name=$(basename "$mp")
+      [[ "$name" == "claude-plugins-official" ]] && continue
+      if [[ -d "$mp.git" ]]; then
+        local out
+        out=$(cd "$mp" && git pull --ff-only 2>&1) || true
+        log "  marketplace[$name]: $out"
+        if [[ -d "$cache_root/$name" ]]; then
+          rm -rf "$cache_root/$name"
+          log "  Cleared plugin cache: $name"
+        fi
+      fi
+    done
   fi
 }
 

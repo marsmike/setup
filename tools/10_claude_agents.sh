@@ -366,7 +366,7 @@ post_start_window() {
 # ---------------------------------------------------------------------------
 stop_crowd() {
   local crowd_script
-  crowd_script=$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit/crowd/*/scripts/crowd.sh 2>/dev/null | head -1 || true)
+  crowd_script=$(ls "$HOME"/.claude/plugins/cache/agentic-toolkit-private/crowd/*/scripts/crowd.sh 2>/dev/null | head -1 || true)
   if [[ -n "$crowd_script" && -f "$crowd_script" ]]; then
     log "Stopping Crowd workers..."
     bash "$crowd_script" stop-all 2>/dev/null || true
@@ -459,7 +459,7 @@ pull_repos() {
   done
 
   # Pull marketplace clone so plugins reflect latest private repo.
-  local marketplace_dir="$HOME/.claude/plugins/marketplaces/agentic-toolkit"
+  local marketplace_dir="$HOME/.claude/plugins/marketplaces/agentic-toolkit-private"
   if [[ -d "$marketplace_dir/.git" ]]; then
     local mout
     mout=$(cd "$marketplace_dir" && git pull --ff-only 2>&1) || true
@@ -468,7 +468,7 @@ pull_repos() {
 
   # Bust the plugin cache so Claude picks up new skill/command versions.
   # Claude Code regenerates the cache on next startup from the marketplace source.
-  local cache_dir="$HOME/.claude/plugins/cache/agentic-toolkit"
+  local cache_dir="$HOME/.claude/plugins/cache/agentic-toolkit-private"
   if [[ -d "$cache_dir" ]]; then
     rm -rf "$cache_dir"
     log "  Cleared plugin cache"

@@ -31,4 +31,8 @@ RUN mineru-models-download -s huggingface -m pipeline || true
 
 EXPOSE 8000
 ENTRYPOINT ["mineru-api"]
-CMD ["--host", "0.0.0.0", "--port", "8000", "--backend", "pipeline"]
+# DON'T pass --backend; mineru 3.1.11 passes unknown CLI args into the
+# per-request kwargs and collides with `backend=` from the HTTP form,
+# triggering `dict() got multiple values for keyword argument 'backend'`.
+# The HTTP request supplies `backend=pipeline` per call.
+CMD ["--host", "0.0.0.0", "--port", "8000"]

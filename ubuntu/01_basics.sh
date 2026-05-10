@@ -286,13 +286,18 @@ else
   log_error "Failed to install Claude Code (download or installation failed)"
   export PATH="$HOME/.local/bin:$PATH"
 fi
-# Register personal plugin marketplace (idempotent; chezmoi settings.json is authoritative)
+# Register plugin marketplaces (idempotent; chezmoi settings.json is authoritative)
 SETTINGS_FILE="${HOME}/.claude/settings.json"
-if [ -f "${SETTINGS_FILE}" ] && jq -e '.extraKnownMarketplaces."agentic-toolkit"' "${SETTINGS_FILE}" &>/dev/null; then
-  echo "Marketplace 'agentic-toolkit' already registered, skipping."
-else
-  claude plugin marketplace add https://github.com/marsmike/agentic-toolkit --scope user
-fi
+for mp in "agentic-toolkit-private:https://github.com/marsmike/agentic-toolkit-private" \
+          "agentic-toolkit:https://github.com/marsmike/agentic-toolkit"; do
+  name="${mp%%:*}"
+  url="${mp#*:}"
+  if [ -f "${SETTINGS_FILE}" ] && jq -e ".extraKnownMarketplaces.\"${name}\"" "${SETTINGS_FILE}" &>/dev/null; then
+    echo "Marketplace '${name}' already registered, skipping."
+  else
+    claude plugin marketplace add "${url}" --scope user
+  fi
+done
 
 # ==============================================================================
 # Gemini CLI + GitHub Copilot extension

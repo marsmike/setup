@@ -138,6 +138,10 @@ services:
   mineru-api:
     image: ${MINERU_IMAGE:-mineru-cpu:3.1.11}
     container_name: mineru-api
+    # Override entrypoint args — DON'T pass --backend (mineru 3.1.11 leaks
+    # unknown CLI args into per-request kwargs, see mineru/Dockerfile).
+    # backend is supplied per HTTP request by RagFlow.
+    command: ["--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${MINERU_PORT:-8100}:8000"
     volumes:

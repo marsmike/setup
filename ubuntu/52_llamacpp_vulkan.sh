@@ -12,15 +12,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ ! -f "$REPO_ROOT/.env" ]; then
-  echo "ERROR: $REPO_ROOT/.env missing. Copy .env.example → .env first."
+ENV_FILE="${HOME}/.env"
+[ ! -f "$ENV_FILE" ] && ENV_FILE="$REPO_ROOT/.env"  # repo-side fallback
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: no .env at \$HOME/.env or \$REPO_ROOT/.env. Copy .env.example → ~/.env first."
   exit 1
 fi
 
 # Export LLAMACPP_* and stack-shared vars for docker compose substitution
 set -a
 # shellcheck disable=SC1091
-source "$REPO_ROOT/.env"
+source "$ENV_FILE"
 set +a
 
 # ── 1. Ensure mike is in render group (Vulkan needs /dev/dri/renderD128) ──

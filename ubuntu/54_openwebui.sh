@@ -3,6 +3,18 @@
 # Runs as a standalone Docker container (independent of RagFlow).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+ENV_FILE="${HOME}/.env"
+[ ! -f "$ENV_FILE" ] && ENV_FILE="$REPO_ROOT/.env"  # repo-side fallback
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ENV_FILE"
+  set +a
+fi
+
 CONTAINER_NAME=open-webui
 
 # --- Remove old container if present (for idempotent re-run) ---

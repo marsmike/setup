@@ -22,7 +22,7 @@ services:
       # Primary = RAGFLOW_API_KEY; extras from RAGFLOW_MCP_EXTRA_INSTANCES.
       - "${SVR_MCP_PORT:-9382}:9382"
       - "${SVR_MCP_PORT_2:-9383}:9383"
-    env_file: ../.env
+    env_file: ${HOME}/.env
     environment:
       - TZ=${TIMEZONE:-Europe/Berlin}
       - TELEMETRY_ENABLED=false
@@ -45,7 +45,7 @@ services:
   mysql:
     image: mysql:8.0.39
     container_name: ragflow-mysql
-    env_file: ../.env
+    env_file: ${HOME}/.env
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD:-infini_rag_flow}
       - TZ=${TIMEZONE:-Europe/Berlin}
@@ -74,7 +74,7 @@ services:
   es01:
     image: elasticsearch:8.11.3
     container_name: ragflow-es01
-    env_file: ../.env
+    env_file: ${HOME}/.env
     environment:
       - node.name=es01
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-infini_rag_flow}
@@ -104,7 +104,7 @@ services:
     image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
     container_name: ragflow-minio
     command: server --console-address ":9001" /data
-    env_file: ../.env
+    env_file: ${HOME}/.env
     environment:
       - MINIO_ROOT_USER=${MINIO_USER:-rag_flow}
       - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-infini_rag_flow}
@@ -122,7 +122,7 @@ services:
     image: valkey/valkey:8
     container_name: ragflow-redis
     command: valkey-server --requirepass ${REDIS_PASSWORD:-infini_rag_flow} --maxmemory 128mb --maxmemory-policy allkeys-lru
-    env_file: ../.env
+    env_file: ${HOME}/.env
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:

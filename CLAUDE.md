@@ -8,11 +8,17 @@ Personal machine setup scripts for macOS, Linux servers, and Proxmox VMs. Script
 
 ## Configuration
 
-All scripts source `.env` from the repo root (or `proxmox/.env` / `linux/.env` as fallbacks). Required variables:
+All scripts source `.env` from `$HOME/.env` (canonical, single source of
+truth). The repo-root `.env` is a symlink to `$HOME/.env` so docker-compose
+`env_file:` directives keep working transparently. Scripts also fall back to
+`$REPO_ROOT/.env` if `$HOME/.env` is missing.
 
 ```bash
-cp .env.example .env
-# SETUP_USER, SETUP_HOST, DOTFILES_REPO, GH_TOKEN, SSH_PUBLIC_KEY
+cp .env.example ~/.env
+chmod 600 ~/.env
+ln -sf ~/.env "$(dirname $(realpath .))/.env"  # back-compat symlink for docker-compose
+# Required: SETUP_USER, SETUP_HOST, DOTFILES_REPO, GH_TOKEN, SSH_PUBLIC_KEY,
+#           RAGFLOW_API_KEY, LLAMACPP_*, etc. — see .env.example
 ```
 
 ## Two Ubuntu Script Collections

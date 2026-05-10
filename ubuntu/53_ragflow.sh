@@ -1,21 +1,24 @@
 #!/bin/bash
 # RagFlow on F3A — thin launcher.
-# Loads .env from repo root, opens UFW for inbound port 80 from LAN,
-# runs docker compose against ragflow/ stack, waits for healthy.
+# Loads .env from $HOME/.env (canonical) with repo-root fallback for back-compat.
+# Opens UFW for inbound ports 80, 9382, 9383 from LAN. Runs docker compose
+# against ragflow/ stack, waits for healthy.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ ! -f "$REPO_ROOT/.env" ]; then
-  echo "ERROR: $REPO_ROOT/.env missing. Copy .env.example → .env and fill in RAGFLOW_* vars."
+ENV_FILE="${HOME}/.env"
+[ ! -f "$ENV_FILE" ] && ENV_FILE="$REPO_ROOT/.env"  # repo-side fallback
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: no .env at \$HOME/.env or \$REPO_ROOT/.env. Copy .env.example → ~/.env and fill in vars."
   exit 1
 fi
 
-# Export RAGFLOW_* and stack-secret vars so docker compose substitutes them
+# Export all vars so docker compose can interpolate them
 set -a
 # shellcheck disable=SC1091
-source "$REPO_ROOT/.env"
+source "$ENV_FILE"
 set +a
 
 cd "$REPO_ROOT/ragflow"

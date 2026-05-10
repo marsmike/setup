@@ -220,7 +220,7 @@ stop_window() {
 
   pane_cmd=$($TMUX list-panes -t "$SESSION:$W_NAME" -F '#{pane_current_command}' 2>/dev/null || echo "")
 
-  if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
+  if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" || "$pane_cmd" == "sh" ]]; then
     log "$W_NAME: at shell prompt (nothing to stop)"
     return 0
   fi
@@ -238,7 +238,7 @@ stop_window() {
       sleep 1
       pane_dead=$($TMUX list-panes -t "$SESSION:$W_NAME" -F '#{pane_dead}' 2>/dev/null || echo "")
       pane_cmd=$($TMUX list-panes -t "$SESSION:$W_NAME" -F '#{pane_current_command}' 2>/dev/null || echo "")
-      if [[ "$pane_dead" == "1" || "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
+      if [[ "$pane_dead" == "1" || "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" || "$pane_cmd" == "sh" ]]; then
         log "$W_NAME: stopped gracefully"
         return 0
       fi
@@ -261,7 +261,7 @@ start_window() {
     log "$W_NAME: respawned ($W_CMD)"
   else
     pane_cmd=$($TMUX list-panes -t "$SESSION:$W_NAME" -F '#{pane_current_command}' 2>/dev/null || echo "")
-    if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" ]]; then
+    if [[ "$pane_cmd" == "bash" || "$pane_cmd" == "zsh" || "$pane_cmd" == "sh" ]]; then
       # Clear pane history so stale prompts don't confuse readiness detection
       $TMUX clear-history -t "$SESSION:$W_NAME" 2>/dev/null || true
       $TMUX send-keys -t "$SESSION:$W_NAME" "$W_CMD" C-m

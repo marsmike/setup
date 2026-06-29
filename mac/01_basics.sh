@@ -94,6 +94,12 @@ if ! command -v bun &>/dev/null; then
   curl -fsSL https://bun.sh/install | bash || echo "  ✗ bun install failed"
 fi
 
+# --- Claude Code (Anthropic's native installer → ~/.local/bin/claude) ---
+if ! command -v claude &>/dev/null; then
+  echo "Installing Claude Code..."
+  curl -fsSL https://claude.ai/install.sh | bash || echo "  ✗ Claude Code install failed"
+fi
+
 # --- summary ---
 echo ""
 if [ ${#FAILED[@]} -eq 0 ]; then

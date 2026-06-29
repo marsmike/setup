@@ -21,22 +21,34 @@ ln -sf ~/.env "$(dirname $(realpath .))/.env"  # back-compat symlink for docker-
 #           RAGFLOW_API_KEY, LLAMACPP_*, etc. — see .env.example
 ```
 
-## Two Ubuntu Script Collections
+## Script Layout
 
-There are two overlapping Ubuntu script sets — understand which to use:
+Onboarding is split from software setup:
 
-- **`linux/`** — modular, run each script separately. Suitable for servers where you want step control. `00_bootstrap.sh` runs from your local machine over SSH.
-- **`ubuntu/`** — newer, consolidated Ubuntu setup for desktop/MiniPC. `01_basics.sh` here is a superset (combines packages + most optional tools in one pass). Has a test pipeline.
+- **`bootstrap/`** — one-time onboarding for a fresh host, run **from your local
+  machine** over SSH. `local/` generates and uploads your SSH key; `server/`
+  creates `SETUP_USER`, grants passwordless sudo, and hardens sshd. See
+  `bootstrap/README.md` for run order. Use `SSH_USER=root` for a brand-new server.
+- **Platform dirs** — software setup for an already-accessible host, run **on the
+  machine itself**: `ubuntu/` (Debian/Ubuntu/Mint desktop or server), `fedora/`,
+  and `mac/`. Each has the same `01_basics.sh` → `02_shell.sh` → `03_dotfiles.sh`
+  phases. `ubuntu/01_basics.sh` is a superset (packages + Docker + most optional
+  tools in one pass) and has a test pipeline.
 
-For a fresh server: use `linux/`. For a new desktop/MiniPC: use `ubuntu/`.
+The old `linux/` collection was consolidated into `bootstrap/` + `ubuntu/` (commit
+`cadde35`); it no longer exists.
 
 ## Running the Pipeline
 
-### New Linux server (automated, from local machine)
+### New Linux server (onboard from local machine, then set up on the host)
 ```bash
-bash linux/00_bootstrap.sh <HOST_IP>                    # or --root-pass 'password'
-# Then SSH in as your user:
-bash linux/01_basics.sh && bash linux/02_dotfiles.sh && bash linux/03_shell.sh
+# From your local machine — generate/upload key, create user, harden sshd.
+# Use SSH_USER=root for a fresh server where SETUP_USER doesn't exist yet.
+bash bootstrap/local/01_keygen.sh && bash bootstrap/local/02_key_upload.sh && bash bootstrap/local/03_key_test.sh
+SSH_USER=root bash bootstrap/server/04_adduser.sh && SSH_USER=root bash bootstrap/server/05_sudoers.sh
+bash bootstrap/server/06_sshd_harden.sh
+# Then SSH into the host as your user and run the platform scripts:
+bash ubuntu/01_basics.sh && bash ubuntu/02_shell.sh && bash ubuntu/03_dotfiles.sh
 exec zsh && p10k configure
 ```
 
@@ -50,7 +62,7 @@ exec zsh
 
 ### macOS
 ```bash
-bash mac/01_basics.sh && bash linux/02_dotfiles.sh && bash linux/03_shell.sh
+bash mac/01_basics.sh && bash mac/02_shell.sh && bash mac/03_dotfiles.sh
 exec zsh && p10k configure
 ```
 

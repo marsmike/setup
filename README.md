@@ -209,11 +209,29 @@ bash mac/01_basics.sh
 | Data | `jq` `yq` `glow` `lnav` `csvlens` `jless` `tldr` |
 | Dev workflow | `git-delta` `direnv` `watchexec` |
 | Network | `httpie` `rsync` |
-| AI / LLM | `models` `llmfit` `gemini-cli` `codex` |
+| AI / LLM | `models` `llmfit` `gemini-cli` `codex` `handy` |
 | Terminal extras | `taproom` `timg` |
 | Runtime | Node.js LTS (via nvm) |
 
 > **Note:** Docker Desktop must be installed manually from docker.com.
+
+---
+
+### Handy — local voice dictation (cross-platform)
+
+[Handy](https://github.com/cjpais/Handy) is a free, open-source, on-device
+Whisper push-to-talk dictation app (a local, no-subscription WisprFlow
+alternative). Hold a hotkey, speak, release → text is typed at the cursor in
+any app. After install, launch it, grant input/Accessibility permissions, set a
+push-to-talk hotkey, and pick the `large-v3-turbo` model for best accuracy.
+
+| Platform | Install |
+|----------|---------|
+| **macOS** | bundled in `mac/01_basics.sh` (`brew install --cask handy`) |
+| **Linux** | `bash ubuntu/26_handy.sh` — distro-aware (.deb on apt, .rpm on dnf, AppImage fallback) + installs `xdotool`/`wtype`/layer-shell deps |
+| **Windows** | `winget install cjpais.Handy` (or the `.msi` from [releases](https://github.com/cjpais/Handy/releases)) |
+
+> The Homebrew and winget packages are community-maintained, not official.
 
 ---
 

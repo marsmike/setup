@@ -74,7 +74,7 @@ for f in "${FORMULAE[@]}"; do brew_install "$f"; done
 
 # --- casks ---
 echo "Installing casks..."
-for c in ghostty codex; do cask_install "$c"; done
+for c in ghostty codex handy; do cask_install "$c"; done  # handy = local Whisper push-to-talk dictation
 
 # --- Node LTS via nvm ---
 echo "Setting up nvm + Node LTS..."

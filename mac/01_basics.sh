@@ -23,6 +23,23 @@ if ! command -v brew &>/dev/null; then
 fi
 command -v brew &>/dev/null || { echo "ERROR: brew not found after install"; exit 1; }
 
+# Persist brew on PATH for future login shells. Written to ~/.zprofile (NOT
+# .zshrc): .zshrc is chezmoi-managed and 03_dotfiles.sh force-applies it on
+# every run, which would silently wipe a manual edit there. .zprofile is
+# untouched by chezmoi, so this survives indefinitely. Guarded so re-running
+# this script never duplicates the block.
+ZPROFILE="${HOME}/.zprofile"
+BREW_MARKER="# >>> mac/01_basics.sh: brew on PATH >>>"
+if ! grep -qF "$BREW_MARKER" "$ZPROFILE" 2>/dev/null; then
+  {
+    echo ""
+    echo "$BREW_MARKER"
+    echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\""
+    echo "# <<< mac/01_basics.sh <<<"
+  } >> "$ZPROFILE"
+  echo "  ✓ Added brew shellenv to ~/.zprofile for future shells"
+fi
+
 # --- soft-fail install helpers (idempotent; one failure never aborts) ---
 FAILED=()
 
@@ -75,6 +92,10 @@ for f in "${FORMULAE[@]}"; do brew_install "$f"; done
 # --- casks ---
 echo "Installing casks..."
 for c in ghostty codex handy; do cask_install "$c"; done  # handy = local Whisper push-to-talk dictation
+
+# --- Nerd Fonts (JetBrainsMono + Meslo — match ubuntu/01_basics.sh) ---
+echo "Installing Nerd Fonts..."
+for c in font-jetbrains-mono-nerd-font font-meslo-lg-nerd-font; do cask_install "$c"; done
 
 # --- Node LTS via nvm ---
 echo "Setting up nvm + Node LTS..."

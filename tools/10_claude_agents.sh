@@ -33,7 +33,7 @@ CLAUDE_BIN="$HOME/.local/bin/claude"
 # Bot/reactive (cheap):  Haiku or deepseek/deepseek-chat (via OpenRouter)
 # Agent/workload (capable): Sonnet — also used by crowd-spawned workers via CLAUDE_CODE_SUBAGENT_MODEL
 CLAUDE_HAIKU="$CLAUDE_BIN --model claude-haiku-4-5-20251001"
-CLAUDE_SONNET="$CLAUDE_BIN --model claude-sonnet-4-6"
+CLAUDE_SONNET="$CLAUDE_BIN --model claude-sonnet-5"
 MAX_RETRIES=5
 RETRY_WAIT=1800  # 30 minutes
 

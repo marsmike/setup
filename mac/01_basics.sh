@@ -114,6 +114,14 @@ if ! command -v bun &>/dev/null; then
   echo "Installing bun..."
   curl -fsSL https://bun.sh/install | bash || echo "  ✗ bun install failed"
 fi
+export PATH="$HOME/.bun/bin:$PATH"
+
+# --- ccstatusline (Claude Code status line — global bun packages don't
+# survive a bun reinstall, so re-check every run) ---
+if command -v bun &>/dev/null && ! command -v ccstatusline &>/dev/null; then
+  echo "Installing ccstatusline..."
+  bun add -g ccstatusline || echo "  ✗ ccstatusline install failed"
+fi
 
 # --- Claude Code (Anthropic's native installer → ~/.local/bin/claude) ---
 if ! command -v claude &>/dev/null; then

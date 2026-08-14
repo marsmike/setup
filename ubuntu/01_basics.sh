@@ -262,6 +262,19 @@ if ! command -v bun &>/dev/null; then
     log_error "Failed to install bun (download or installation failed)"
   fi
 fi
+export PATH="$HOME/.bun/bin:$PATH"
+
+# ==============================================================================
+# ccstatusline (Claude Code status line — global bun packages don't survive
+# a bun reinstall, so re-check every run)
+# ==============================================================================
+if command -v bun &>/dev/null && ! command -v ccstatusline &>/dev/null; then
+  if bun add -g ccstatusline; then
+    echo "ccstatusline installed successfully"
+  else
+    log_error "Failed to install ccstatusline"
+  fi
+fi
 
 # ==============================================================================
 # yt-dlp (YouTube/media downloader)

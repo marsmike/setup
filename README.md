@@ -209,11 +209,30 @@ bash mac/01_basics.sh
 | Data | `jq` `yq` `glow` `lnav` `csvlens` `jless` `tldr` |
 | Dev workflow | `git-delta` `direnv` `watchexec` |
 | Network | `httpie` `rsync` |
-| AI / LLM | `models` `llmfit` `gemini-cli` `codex` `handy` |
+| AI / LLM | `models` `llmfit` `gemini-cli` `handy` `lm-studio` `ollama-app` |
+| Coding agents | Claude Code (native installer), `codex`, `opencode` (sst tap), `antigravity` + `agy` CLI; Pi comes via chezmoi |
 | Terminal extras | `taproom` `timg` |
 | Runtime | Node.js LTS (via nvm) |
 
 > **Note:** Docker Desktop must be installed manually from docker.com.
+
+---
+
+### Coding agents
+
+Each agent is paired with a fixed backend. Configs and aliases live in the chezmoi dotfiles
+(`~/.config/opencode`, `~/.pi/agent`, `~/.codex/*.config.toml`, `~/.lmstudio.env`, `~/.zshrc`).
+Run `aihelp` for the full alias card.
+
+| Agent | Default model | Backend | Aliases |
+|-------|---------------|---------|---------|
+| Claude Code | Sonnet 5 / Opus 5.5 / Fable 5.1 | Anthropic; `cclm` → LM Studio | `cc` `cco` `cch` `ccf` `cck` `cclm` |
+| OpenCode | GLM 5.3 | Ollama cloud via local daemon (`:cloud` tags) | `oc` `ock` (Kimi K3) `ocf` `oclm` |
+| Pi | Qwen 3.8 27B splash | LM Studio `:1234` | `p` `pk` (Kimi K3) `pg` (GLM 5.3) |
+| Codex | gpt-6-sol medium | ChatGPT login; profiles `codex -p <name>` | `cx` `cxa` `cxf` `cxl` |
+| Antigravity | — | Google account | `ag` |
+
+`03_dotfiles.sh` prints the one-time sign-ins at the end (`codex login`, `ollama signin`, `agy`, …).
 
 ---
 

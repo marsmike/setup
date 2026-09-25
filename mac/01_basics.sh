@@ -86,12 +86,17 @@ FORMULAE=(
   nvm
   AlexsJones/llmfit/llmfit
   yt-dlp gemini-cli
+  sst/tap/opencode   # upstream tap — homebrew-core lags releases
 )
 for f in "${FORMULAE[@]}"; do brew_install "$f"; done
 
 # --- casks ---
 echo "Installing casks..."
 for c in ghostty codex handy; do cask_install "$c"; done  # handy = local Whisper push-to-talk dictation
+# Model backends + Antigravity: all self-update after install.
+# lm-studio serves local models on :1234; ollama-app runs the daemon on :11434
+# that proxies Ollama cloud models (`ollama signin` once).
+for c in antigravity lm-studio ollama-app; do cask_install "$c"; done
 
 # --- Nerd Fonts (JetBrainsMono + Meslo — match ubuntu/01_basics.sh) ---
 echo "Installing Nerd Fonts..."
@@ -128,6 +133,15 @@ if ! command -v claude &>/dev/null; then
   echo "Installing Claude Code..."
   curl -fsSL https://claude.ai/install.sh | bash || echo "  ✗ Claude Code install failed"
 fi
+
+# --- Antigravity CLI (Google's installer → ~/.local/bin/agy, self-updates) ---
+if [ ! -x "$HOME/.local/bin/agy" ]; then
+  echo "Installing Antigravity CLI..."
+  curl -fsSL https://antigravity.google/cli/install.sh | bash || echo "  ✗ agy install failed"
+fi
+
+# Pi coding agent is installed by chezmoi's run_onchange_after_install-bun-globals.sh
+# (03_dotfiles.sh), next to the ~/.pi/agent config it reads.
 
 # --- summary ---
 echo ""

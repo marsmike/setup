@@ -55,3 +55,14 @@ fi
 
 echo ""
 echo "Done! Start a new tmux session and press prefix+I to install plugins."
+
+# --- coding agents: first-run logins that can't be scripted ---
+cat <<'EOF'
+
+Coding agents — one-time sign-ins (configs came from chezmoi; run `aihelp` for aliases):
+  claude                         # Anthropic login
+  codex login                    # ChatGPT login
+  ollama signin                  # enables :cloud models for OpenCode / Pi
+  agy                            # Google login (browser)
+  LM Studio: download qwen3.8-27b-splash, default context 131072 (Pi / cclm / oclm)
+EOF

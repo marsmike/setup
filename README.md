@@ -129,7 +129,7 @@ Mermaid diagrams of the provisioning flow, VM model, and bootstrap sequence.
 | `bootstrap/server/06_sshd_harden.sh` | Key-only SSH, no root login, with automatic rollback |
 | `bootstrap/server/07_baseline.sh` | Updates, automatic security updates, ufw, fail2ban |
 | **ubuntu/ — run on the machine** | |
-| `ubuntu/01_minimal.sh` | Claude Code, herdr, tmux, and what the dotfiles require |
+| `ubuntu/01_minimal.sh` | Claude Code (auto permission mode, set in `~/.config/claude-permission-mode`), herdr, tmux, and what the dotfiles require |
 | `ubuntu/01_basics.sh` | Full package and tool set; `--server` skips ollama and fonts |
 | `ubuntu/02_shell.sh` | oh-my-zsh, powerlevel10k, autosuggestions, syntax highlighting |
 | `ubuntu/03_dotfiles.sh` | chezmoi dotfiles (`DOTFILES_REPO`) + tpm |

@@ -1,21 +1,24 @@
 #!/bin/bash
 # bootstrap/local/02_key_upload.sh
-# Copies the public SSH key to the remote host (ssh-copy-id).
-# Reads SETUP_USER, SETUP_HOST, SETUP_SSH_KEY from repo root .env.
+# Copies the public SSH key to the account you connect with (ssh-copy-id).
+# On a fresh server that account is root, because SETUP_USER does not exist
+# yet. 04_adduser.sh installs the same key for SETUP_USER afterwards.
 #
 # Usage:
-#   bash bootstrap/local/02_key_upload.sh
-#   bash bootstrap/local/02_key_upload.sh user@host
+#   SSH_USER=root bash bootstrap/local/02_key_upload.sh   # fresh server
+#   bash bootstrap/local/02_key_upload.sh                 # existing SETUP_USER
+#   bash bootstrap/local/02_key_upload.sh user@host       # explicit target
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-[ -f "${REPO_ROOT}/.env" ] && set -o allexport && source "${REPO_ROOT}/.env" && set +o allexport
+# shellcheck source=../lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
+load_setup_env
 
-REMOTE="${1:-${SETUP_HOST:-}}"
-KEY_PATH="${SETUP_SSH_KEY:-${HOME}/.ssh/id_ed25519}"
-
-if [ -z "${REMOTE}" ]; then
-  read -rp "Remote host (user@host or host): " REMOTE
+if [ -n "${1:-}" ]; then
+  REMOTE="$1"
+else
+  require_setup_target
+  REMOTE="${SSH_USER}@${HOST_ONLY}"
 fi
 
 if [ ! -f "${KEY_PATH}.pub" ]; then
@@ -28,4 +31,4 @@ echo "Copying public key to ${REMOTE}..."
 ssh-copy-id -i "${KEY_PATH}.pub" "${REMOTE}"
 
 echo ""
-echo "Done. Test with: bash bootstrap/local/03_key_test.sh"
+echo "Done. Next: SSH_USER=root bash bootstrap/server/04_adduser.sh"

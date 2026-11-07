@@ -2,7 +2,23 @@
 # Phase 1 — Packages (Ubuntu/Debian/Mint)
 # Installs baseline packages and universal CLI tools.
 # Run before any other phase scripts.
+#
+# Usage:
+#   bash ubuntu/01_basics.sh            # desktop, MiniPC or dev machine
+#   bash ubuntu/01_basics.sh --server   # headless server: skips ollama and fonts
+#
+# Keeps going after a failed step, then lists every failure and exits 1.
 set -uo pipefail
+
+SERVER_MODE=false
+for arg in "$@"; do
+  case "$arg" in
+    --server) SERVER_MODE=true ;;
+    *) echo "ERROR: unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+FAILED_STEPS=()
 
 # Helper for authenticated GitHub API calls
 gh_api() {
@@ -16,6 +32,12 @@ gh_api() {
 # Error logging
 log_error() {
   echo "ERROR: $1" >&2
+  FAILED_STEPS+=("$1")
+}
+
+# Never prompts, and waits for background apt runs on a freshly booted server
+apt_get() {
+  sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o DPkg::Lock::Timeout=300 "$@"
 }
 
 if ! command -v apt &>/dev/null; then
@@ -23,20 +45,31 @@ if ! command -v apt &>/dev/null; then
   exit 1
 fi
 
+apt_get update
+command -v add-apt-repository &>/dev/null || apt_get install software-properties-common
 sudo add-apt-repository -y universe || true
-sudo apt update
+apt_get update
 
 # Detect correct libfuse2 package name (Ubuntu 22.10+ renamed it)
 LIBFUSE=$(apt-cache show libfuse2t64 &>/dev/null && echo libfuse2t64 || echo libfuse2)
 
-sudo apt -y install \
-  git apt-transport-https ca-certificates curl build-essential \
-  btop htop gh vim wget \
-  python3 python3-pip python3-venv \
-  zoxide ncdu tealdeer httpie powertop fzf bat ack dnsutils rsync jq tmux zsh \
-  ripgrep fd-find ranger eza \
-  direnv hyperfine lnav sqlite3 \
+BASE_PACKAGES=(
+  git apt-transport-https ca-certificates curl build-essential
+  btop htop gh vim wget
+  python3 python3-pip python3-venv
+  zoxide ncdu tealdeer httpie powertop fzf bat ack dnsutils rsync jq tmux zsh
+  ripgrep fd-find ranger eza git-delta
+  direnv hyperfine lnav sqlite3 fontconfig
   "$LIBFUSE"
+)
+
+# apt installs nothing if one name is unknown, so retry one by one on failure.
+if ! apt_get install "${BASE_PACKAGES[@]}"; then
+  echo "Bulk install failed; retrying packages individually..."
+  for package in "${BASE_PACKAGES[@]}"; do
+    apt_get install "$package" || log_error "Failed to install apt package: $package"
+  done
+fi
 
 # On Ubuntu, bat is installed as 'batcat' — create a user-level symlink
 mkdir -p ~/.local/bin
@@ -48,11 +81,13 @@ mkdir -p ~/.local/bin
 # Docker Engine (official repo + compose plugin)
 if ! command -v docker &>/dev/null; then
   if curl -fsSL https://get.docker.com 2>/dev/null | sh; then
-    sudo usermod -aG docker "$USER"
     echo "Docker installed successfully"
   else
     log_error "Failed to install Docker (download or installation failed)"
   fi
+fi
+if getent group docker &>/dev/null; then
+  sudo usermod -aG docker "$USER"
 fi
 
 # glow (Markdown renderer — Charm apt repo)
@@ -82,6 +117,8 @@ fi
 export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
 if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # nvm is not safe under set -u
+  set +u
   \. "$NVM_DIR/nvm.sh"
   if nvm install --lts; then
     nvm alias default 'lts/*' || log_error "Failed to set default node alias"
@@ -89,6 +126,7 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
   else
     log_error "Failed to install Node LTS (nvm download failed, possibly 403 error)"
   fi
+  set -u
 else
   log_error "nvm.sh not found - nvm installation may have failed"
 fi
@@ -165,7 +203,7 @@ if ! command -v sops &>/dev/null; then
 fi
 
 # ollama (local LLMs)
-if ! command -v ollama &>/dev/null; then
+if ! $SERVER_MODE && ! command -v ollama &>/dev/null; then
   if curl -fsSL https://ollama.com/install.sh 2>/dev/null | sh; then
     echo "ollama installed successfully"
   else
@@ -198,8 +236,11 @@ export PATH="$HOME/.local/bin:$PATH"
 # ==============================================================================
 # restic (backup tool)
 # ==============================================================================
-sudo apt install -y restic
-sudo restic self-update || true  # apt version may not support self-update
+if apt_get install restic; then
+  sudo restic self-update || true  # apt version may not support self-update
+else
+  log_error "Failed to install restic"
+fi
 
 # ==============================================================================
 # lazygit
@@ -248,9 +289,11 @@ install_nerd_font() {
     log_error "Failed to install ${font} Nerd Font (download or extraction failed)"
   fi
 }
-install_nerd_font "JetBrainsMono"
-install_nerd_font "Meslo"
-fc-cache -fv
+if ! $SERVER_MODE; then
+  install_nerd_font "JetBrainsMono"
+  install_nerd_font "Meslo"
+  fc-cache -f || log_error "Failed to rebuild font cache"
+fi
 
 # ==============================================================================
 # bun (JavaScript runtime / bundler)
@@ -304,24 +347,24 @@ fi
 # Gemini CLI + GitHub Copilot extension
 # (requires nvm/node already loaded above)
 # ==============================================================================
-echo "Installing Gemini CLI..."
-npm install -g @google/gemini-cli
-echo "Installing GitHub Copilot CLI..."
-npm install -g @github/copilot
-echo "Installing OpenAI Codex CLI..."
-npm install -g @openai/codex
-echo "Installing obsidian-headless (headless Obsidian Sync CLI)..."
-npm install -g obsidian-headless
+for package in @google/gemini-cli @github/copilot @openai/codex obsidian-headless @mariozechner/pi-coding-agent; do
+  echo "Installing $package..."
+  npm install -g "$package" || log_error "Failed to install npm package: $package"
+done
 
 # ==============================================================================
 # LLM CLI tools (Simon Willison stack + aider + pi)
 # ==============================================================================
 for tool in llm files-to-prompt ttok strip-tags aider-chat; do
   echo "Installing $tool..."
-  uv tool install "$tool"
+  uv tool install "$tool" || log_error "Failed to install uv tool: $tool"
 done
 
-echo "Installing Pi coding agent..."
-npm install -g @mariozechner/pi-coding-agent
+if [ "${#FAILED_STEPS[@]}" -gt 0 ]; then
+  echo ""
+  echo "Basics finished with ${#FAILED_STEPS[@]} failure(s):" >&2
+  printf '  - %s\n' "${FAILED_STEPS[@]}" >&2
+  exit 1
+fi
 
 echo "Basics installed. Next: 02_shell.sh then 03_dotfiles.sh"

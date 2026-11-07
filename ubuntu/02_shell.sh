@@ -66,7 +66,8 @@ if ! infocmp xterm-ghostty &>/dev/null; then
   curl -fsSL "https://github.com/ghostty-org/ghostty/raw/main/src/terminfo/ghostty.terminfo" \
     -o "$TMP/ghostty.terminfo" 2>/dev/null \
     || curl -fsSL "https://ghostty.org/terminfo/ghostty.terminfo" \
-      -o "$TMP/ghostty.terminfo" 2>/dev/null
+      -o "$TMP/ghostty.terminfo" 2>/dev/null \
+    || true  # the minimal fallback below covers a failed download
   mkdir -p ~/.terminfo
   if [ -s "$TMP/ghostty.terminfo" ]; then
     tic -x -o ~/.terminfo "$TMP/ghostty.terminfo"

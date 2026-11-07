@@ -3,79 +3,105 @@
 One-time onboarding scripts for a new server. Run these **before** the platform scripts
 (`ubuntu/`, `mac/`, `fedora/`), which handle software setup for an already-accessible host.
 
+All scripts run **locally** and SSH into the remote host. They read `~/.env`, and
+values set inline on the command line take priority.
+
 ---
 
 ## Overview
 
-| Script | Actor | What it does |
-|--------|-------|--------------|
-| `local/01_keygen.sh` | local | Generate ED25519 key pair (skips if exists) |
-| `local/02_key_upload.sh` | local | `ssh-copy-id` key → `SETUP_USER@SETUP_HOST` |
-| `local/03_key_test.sh` | local | Verify key auth; print remote fingerprint |
-| `server/04_adduser.sh` | local→remote | Create `SETUP_USER`, add to sudo + docker groups |
-| `server/05_sudoers.sh` | local→remote | Grant passwordless sudo to `SETUP_USER` |
-| `server/06_sshd_harden.sh` | local→remote | Disable password auth (asks confirmation) |
-
-All server scripts run **locally** and SSH into the remote host.
+| Script | What it does |
+|--------|--------------|
+| `local/01_keygen.sh` | Generate this server's ED25519 key and add it to `~/.ssh/config` |
+| `local/02_key_upload.sh` | `ssh-copy-id` the key to `SSH_USER@host` |
+| `local/03_key_test.sh` | Verify key auth and print authorized fingerprints |
+| `server/04_adduser.sh` | Create `SETUP_USER`, add sudo + docker groups, install the key |
+| `server/05_sudoers.sh` | Grant passwordless sudo to `SETUP_USER` |
+| `server/06_sshd_harden.sh` | Key-only SSH, no root login, only `SETUP_USER` may log in |
+| `server/07_baseline.sh` | All updates, automatic security updates, ufw, fail2ban (Debian/Ubuntu) |
 
 ---
 
 ## Prerequisites
 
-1. Copy and fill in the repo root `.env`:
+Set at least `SETUP_USER` and `SETUP_HOST` in `~/.env`. The remote host must accept
+SSH as root, by password or key.
+
+## One key per server
+
+Every server gets its own key at `~/.ssh/id_ed25519_<host>`, named from `SETUP_HOST`,
+so a compromised server exposes nothing about your other hosts. `01_keygen.sh` also
+adds the host to `~/.ssh/config` with `IdentitiesOnly yes` and `ForwardAgent no`.
+`SETUP_SSH_KEY` overrides the path. To onboard another server, set its host inline:
 
 ```bash
-cp .env.example .env
-# Edit .env — set SETUP_USER, SETUP_HOST, SETUP_SSH_KEY at minimum
+SETUP_HOST=mike@other.example.com bash bootstrap/local/01_keygen.sh
 ```
 
-2. The remote host must have SSH accessible (password or key).
+Use a host name rather than an IP in `SETUP_HOST`, so the key name stays meaningful.
 
 ---
 
-## Run order
+## Run order for a fresh server
 
-### Step 1 — Local: generate and upload key
-
-```bash
-bash bootstrap/local/01_keygen.sh    # generate key (skips if exists)
-bash bootstrap/local/02_key_upload.sh # upload to server (prompts for password)
-bash bootstrap/local/03_key_test.sh   # verify + print fingerprint
-```
-
-### Step 2 — Server: create user and harden
-
-For a **fresh server** (only `root` exists), override `SSH_USER`:
+Only `root` exists at first, so the early steps connect as root:
 
 ```bash
-SSH_USER=root bash bootstrap/server/04_adduser.sh  # create SETUP_USER
-SSH_USER=root bash bootstrap/server/05_sudoers.sh  # passwordless sudo
+bash bootstrap/local/01_keygen.sh
+SSH_USER=root bash bootstrap/local/02_key_upload.sh
+SSH_USER=root bash bootstrap/server/04_adduser.sh
+SSH_USER=root bash bootstrap/server/05_sudoers.sh
 ```
 
-Once `SETUP_USER` can log in with a key, the default (`SSH_USER=$SETUP_USER`) works:
+Confirm your user can log in, then secure the server. These steps always connect
+as `SETUP_USER` and stop if it has no working key login with sudo:
 
 ```bash
-bash bootstrap/server/06_sshd_harden.sh  # disable password auth (asks confirmation)
+bash bootstrap/local/03_key_test.sh
+bash bootstrap/server/06_sshd_harden.sh
+bash bootstrap/server/07_baseline.sh
 ```
 
-### SSH_USER override
+---
 
-`SSH_USER` controls who you SSH as when running server scripts:
+## Lockout protection
 
-- Default: `SSH_USER=$SETUP_USER` — assumes user already exists and key is uploaded.
-- Override: `SSH_USER=root` — use for fresh servers where `SETUP_USER` doesn't exist yet.
+**`06_sshd_harden.sh`** writes `/etc/ssh/sshd_config.d/00-hardening.conf`. It loads
+before every other file, so provider files such as `50-cloud-init.conf` can't
+override it. The script then checks the effective settings with `sshd -T` over a
+new login. If that fails, a timer removes the file after 5 minutes.
 
-Set in `.env` or inline: `SSH_USER=root bash bootstrap/server/04_adduser.sh`
+**`07_baseline.sh`** allows the SSH port before enabling ufw, then tests a new login.
+If that fails, a timer disables the firewall after 5 minutes.
+
+Keep an existing session open until each script finishes.
+
+---
+
+## fail2ban
+
+Five failed logins within 10 minutes ban the source IP for an hour. Failed key
+attempts count, including tries with the wrong user. Exempt stable addresses with:
+
+```bash
+FAIL2BAN_IGNOREIP="203.0.113.7 2001:db8::1" bash bootstrap/server/07_baseline.sh
+```
+
+To lift a ban from an address that can still log in:
+
+```bash
+sudo fail2ban-client set sshd unbanip <ip>
+```
 
 ---
 
 ## After bootstrap
 
-The server is ready for the platform setup scripts:
+The server is ready for the platform setup scripts. On the server as your user,
+choose `01_minimal.sh` or `01_basics.sh --server`:
 
 ```bash
-bash ubuntu/01_basics.sh
+bash ubuntu/01_minimal.sh
 bash ubuntu/02_shell.sh
 bash ubuntu/03_dotfiles.sh
-# ...
 ```

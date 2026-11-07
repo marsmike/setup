@@ -1,52 +1,91 @@
 #!/bin/bash
 # bootstrap/server/06_sshd_harden.sh
-# Hardens sshd on the remote host: key-based auth only, no root login, no passwords.
-# Invoked LOCALLY — SSHes into the server to run the commands.
+# Hardens sshd on the remote host: key-only auth, no root login, SETUP_USER only.
+# Invoked LOCALLY — SSHes into the server as SETUP_USER to run the commands.
 #
-# IMPORTANT: Run 03_key_test.sh first to confirm key auth works before calling this.
-# Disabling password auth without a working key will lock you out.
+# The settings go in a drop-in that loads before every other file, so provider
+# files such as 50-cloud-init.conf cannot override them. A timer removes the
+# drop-in after 5 minutes unless a new login proves the change is safe.
 #
-# Reads SETUP_USER, SETUP_HOST, SSH_USER from repo root .env.
+# Usage:
+#   bash bootstrap/server/06_sshd_harden.sh
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-[ -f "${REPO_ROOT}/.env" ] && set -o allexport && source "${REPO_ROOT}/.env" && set +o allexport
+# shellcheck source=../lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
+load_setup_env
+require_setup_target
 
-SETUP_USER="${SETUP_USER:-}"
-SETUP_HOST="${SETUP_HOST:-}"
-SSH_USER="${SSH_USER:-${SETUP_USER}}"
+# Root may be locked out by this script, so always work as SETUP_USER.
+SSH_USER="${SETUP_USER}"
+require_user_access
 
-if [ -z "${SETUP_USER}" ]; then
-  echo "ERROR: SETUP_USER is not set. Add it to .env." >&2
-  exit 1
-fi
-if [ -z "${SETUP_HOST}" ]; then
-  echo "ERROR: SETUP_HOST is not set. Add it to .env." >&2
-  exit 1
-fi
-
-HOST_ONLY="${SETUP_HOST#*@}"
-SUDO_CMD="$( [ "${SSH_USER}" = "root" ] && echo "" || echo "sudo" )"
-
-echo "This will disable password authentication on ${HOST_ONLY}."
-echo "Ensure key auth is working first: bash bootstrap/local/03_key_test.sh"
-echo ""
-read -rp "Confirm key login works before disabling password auth? [y/N] " ans
-[[ "$ans" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
-
-echo ""
 echo "Hardening sshd on ${HOST_ONLY}..."
 
-ssh "${SSH_USER}@${HOST_ONLY}" ${SUDO_CMD:+"${SUDO_CMD}"} bash -s <<'REMOTE'
+run_remote_root "TARGET_USER=${SETUP_USER}" <<'REMOTE'
 set -euo pipefail
-sed -i 's/.*PubkeyAuthentication.*/PubkeyAuthentication yes/'   /etc/ssh/sshd_config
-sed -i 's/.*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/.*PermitRootLogin.*/PermitRootLogin no/'              /etc/ssh/sshd_config
-sed -i 's/.*AuthorizedKeysFile.*/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
-systemctl restart sshd
-echo "sshd hardened: key-only auth, no root login, no passwords."
+DROPIN=/etc/ssh/sshd_config.d/00-hardening.conf
+ROLLBACK_UNIT=setup-sshd-rollback
+
+if ! grep -qiE '^Include /etc/ssh/sshd_config\.d/' /etc/ssh/sshd_config; then
+  echo "ERROR: /etc/ssh/sshd_config does not include sshd_config.d; nothing changed." >&2
+  exit 1
+fi
+
+# The service is 'ssh' on Debian/Ubuntu and 'sshd' elsewhere.
+SERVICE=sshd
+systemctl cat ssh.service &>/dev/null && SERVICE=ssh
+
+# Socket-activated sshd may not have created this yet, and sshd -t needs it.
+mkdir -p /run/sshd
+
+systemctl stop "${ROLLBACK_UNIT}.timer" 2>/dev/null || true
+systemd-run --quiet --unit="${ROLLBACK_UNIT}" --on-active=300 \
+  /bin/sh -c "rm -f ${DROPIN}; systemctl restart ${SERVICE}"
+
+cat > "${DROPIN}" <<EOF
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AllowUsers ${TARGET_USER}
+EOF
+chmod 644 "${DROPIN}"
+
+if ! sshd -t; then
+  rm -f "${DROPIN}"
+  systemctl stop "${ROLLBACK_UNIT}.timer" || true
+  echo "ERROR: sshd rejected the configuration; drop-in removed." >&2
+  exit 1
+fi
+systemctl restart "${SERVICE}"
+echo "sshd restarted with ${DROPIN}; rollback armed for 5 minutes."
 REMOTE
 
 echo ""
-echo "Done. Bootstrap complete."
-echo "  Connect: ssh ${SETUP_USER}@${HOST_ONLY}"
+echo "Verifying with a new login..."
+EFFECTIVE="$(setup_ssh -o BatchMode=yes "${SETUP_USER}@${HOST_ONLY}" 'sudo -n sshd -T')" || {
+  echo "ERROR: new login failed. Keep any open session; the change reverts within 5 minutes." >&2
+  exit 1
+}
+
+for expected in \
+  "permitrootlogin no" \
+  "passwordauthentication no" \
+  "kbdinteractiveauthentication no" \
+  "pubkeyauthentication yes" \
+  "allowusers ${SETUP_USER}"; do
+  if ! grep -qix "${expected}" <<<"${EFFECTIVE}"; then
+    echo "ERROR: effective sshd setting is not '${expected}'. The change reverts within 5 minutes." >&2
+    exit 1
+  fi
+  echo "  ok: ${expected}"
+done
+
+setup_ssh -o BatchMode=yes "${SETUP_USER}@${HOST_ONLY}" \
+  'sudo -n systemctl stop setup-sshd-rollback.timer'
+echo "Rollback cancelled."
+
+echo ""
+echo "Done. Connect with: ssh ${SETUP_USER}@${HOST_ONLY}"
+echo "Next: bash bootstrap/server/07_baseline.sh"

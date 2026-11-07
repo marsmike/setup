@@ -27,13 +27,15 @@ Onboarding is split from software setup:
 
 - **`bootstrap/`** — one-time onboarding for a fresh host, run **from your local
   machine** over SSH. `local/` generates and uploads your SSH key; `server/`
-  creates `SETUP_USER`, grants passwordless sudo, and hardens sshd. See
-  `bootstrap/README.md` for run order. Use `SSH_USER=root` for a brand-new server.
+  creates `SETUP_USER`, grants passwordless sudo, hardens sshd, and applies the
+  security baseline (updates, ufw, fail2ban). See `bootstrap/README.md` for run
+  order. Use `SSH_USER=root` for the early steps on a brand-new server.
 - **Platform dirs** — software setup for an already-accessible host, run **on the
   machine itself**: `ubuntu/` (Debian/Ubuntu/Mint desktop or server), `fedora/`,
   and `mac/`. Each has the same `01_basics.sh` → `02_shell.sh` → `03_dotfiles.sh`
   phases. `ubuntu/01_basics.sh` is a superset (packages + Docker + most optional
-  tools in one pass) and has a test pipeline.
+  tools in one pass) and has a test pipeline. `ubuntu/01_minimal.sh` is the small
+  alternative (Claude Code, herdr, tmux, and what the dotfiles require).
 
 The old `linux/` collection was consolidated into `bootstrap/` + `ubuntu/` (commit
 `cadde35`); it no longer exists.
@@ -42,14 +44,18 @@ The old `linux/` collection was consolidated into `bootstrap/` + `ubuntu/` (comm
 
 ### New Linux server (onboard from local machine, then set up on the host)
 ```bash
-# From your local machine — generate/upload key, create user, harden sshd.
-# Use SSH_USER=root for a fresh server where SETUP_USER doesn't exist yet.
-bash bootstrap/local/01_keygen.sh && bash bootstrap/local/02_key_upload.sh && bash bootstrap/local/03_key_test.sh
-SSH_USER=root bash bootstrap/server/04_adduser.sh && SSH_USER=root bash bootstrap/server/05_sudoers.sh
+# From your local machine. Only root exists at first, so early steps use SSH_USER=root.
+bash bootstrap/local/01_keygen.sh
+SSH_USER=root bash bootstrap/local/02_key_upload.sh
+SSH_USER=root bash bootstrap/server/04_adduser.sh
+SSH_USER=root bash bootstrap/server/05_sudoers.sh
+bash bootstrap/local/03_key_test.sh
 bash bootstrap/server/06_sshd_harden.sh
-# Then SSH into the host as your user and run the platform scripts:
-bash ubuntu/01_basics.sh && bash ubuntu/02_shell.sh && bash ubuntu/03_dotfiles.sh
-exec zsh && p10k configure
+bash bootstrap/server/07_baseline.sh
+# Then SSH into the host as your user and run the platform scripts.
+# Use 01_minimal.sh, or 01_basics.sh --server for the full set without ollama and fonts:
+bash ubuntu/01_minimal.sh && bash ubuntu/02_shell.sh && bash ubuntu/03_dotfiles.sh
+exec zsh
 ```
 
 ### New Ubuntu desktop/MiniPC (on the machine itself)
@@ -102,7 +108,11 @@ Logs are written to `~/.pipeline-test/logs/`.
 
 **Idempotency**: Every tool install is guarded with `command -v <tool> &>/dev/null || install`. Scripts are safe to re-run; `02_shell.sh` explicitly skips already-installed components.
 
-**Error handling**: `set -euo pipefail` at the top, but optional/external downloads use soft-fail (`log_error` function + continue) so one failed download doesn't abort the whole script.
+**Error handling**: `set -euo pipefail` at the top, but optional/external downloads use soft-fail (`log_error` function + continue) so one failed download doesn't abort the whole script. `ubuntu/01_basics.sh` lists every failure at the end and exits 1.
+
+**One SSH key per server**: `bootstrap/` derives `~/.ssh/id_ed25519_<host>` from `SETUP_HOST` and offers only that key (`IdentitiesOnly`). Never reuse a key across public-facing servers.
+
+**Lockout safety**: `bootstrap/server/06_sshd_harden.sh` and `07_baseline.sh` arm a 5-minute systemd rollback timer and cancel it only after a new SSH login succeeds. Keep that pattern for anything that can cut off remote access.
 
 **Install locations**: User-level tools go to `~/.local/bin`; system tools requiring sudo go to `/usr/local/bin`.
 

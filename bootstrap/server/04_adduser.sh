@@ -1,59 +1,54 @@
 #!/bin/bash
 # bootstrap/server/04_adduser.sh
-# Creates SETUP_USER on the remote host and adds them to sudo + docker groups.
+# Creates SETUP_USER on the remote host, adds them to the sudo and docker
+# groups, and installs this machine's public key for them.
 # Invoked LOCALLY — SSHes into the server to run the commands.
-#
-# Reads SETUP_USER, SETUP_HOST, SSH_USER from repo root .env.
 #
 # For a fresh server (SETUP_USER doesn't exist yet):
 #   SSH_USER=root bash bootstrap/server/04_adduser.sh
-#
-# After bootstrap, default SSH_USER=$SETUP_USER works:
-#   bash bootstrap/server/04_adduser.sh
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-[ -f "${REPO_ROOT}/.env" ] && set -o allexport && source "${REPO_ROOT}/.env" && set +o allexport
+# shellcheck source=../lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
+load_setup_env
+require_setup_target
 
-SETUP_USER="${SETUP_USER:-}"
-SETUP_HOST="${SETUP_HOST:-}"
-SSH_USER="${SSH_USER:-${SETUP_USER}}"
-
-if [ -z "${SETUP_USER}" ]; then
-  echo "ERROR: SETUP_USER is not set. Add it to .env." >&2
+if [ ! -f "${KEY_PATH}.pub" ]; then
+  echo "ERROR: Public key not found at ${KEY_PATH}.pub" >&2
+  echo "Run: bash bootstrap/local/01_keygen.sh" >&2
   exit 1
 fi
-if [ -z "${SETUP_HOST}" ]; then
-  echo "ERROR: SETUP_HOST is not set. Add it to .env." >&2
-  exit 1
-fi
+PUBLIC_KEY="$(cat "${KEY_PATH}.pub")"
 
-# Strip user@ prefix from SETUP_HOST if present
-HOST_ONLY="${SETUP_HOST#*@}"
+echo "Connecting as ${SSH_USER}@${HOST_ONLY} to set up user '${SETUP_USER}'..."
 
-if [ "${SSH_USER}" != "root" ]; then
-  echo "WARNING: SSH_USER=${SSH_USER} (not root)."
-  echo "  If ${SETUP_USER} doesn't exist yet on ${HOST_ONLY}, this will fail."
-  echo "  For a fresh server, run: SSH_USER=root bash $0"
-  echo ""
-fi
-
-SUDO_CMD="$( [ "${SSH_USER}" = "root" ] && echo "" || echo "sudo" )"
-
-echo "Connecting as ${SSH_USER}@${HOST_ONLY} to create user '${SETUP_USER}'..."
-
-ssh "${SSH_USER}@${HOST_ONLY}" ${SUDO_CMD:+"${SUDO_CMD}"} bash -s <<REMOTE
+run_remote_root "TARGET_USER=${SETUP_USER}" "PUBLIC_KEY=${PUBLIC_KEY}" <<'REMOTE'
 set -euo pipefail
-if id "${SETUP_USER}" &>/dev/null; then
-  echo "User '${SETUP_USER}' already exists, skipping adduser."
+if id "${TARGET_USER}" &>/dev/null; then
+  echo "User '${TARGET_USER}' already exists, skipping creation."
 else
-  adduser --disabled-password --gecos "" "${SETUP_USER}"
-  echo "User '${SETUP_USER}' created."
+  useradd -m -s /bin/bash -U "${TARGET_USER}"
+  # No usable password, but not locked: key login still works.
+  usermod -p '*' "${TARGET_USER}"
+  echo "User '${TARGET_USER}' created."
 fi
-usermod -aG sudo "${SETUP_USER}"
-getent group docker &>/dev/null && usermod -aG docker "${SETUP_USER}" || true
-echo "Groups updated for '${SETUP_USER}'."
+usermod -aG sudo "${TARGET_USER}"
+if getent group docker &>/dev/null; then
+  usermod -aG docker "${TARGET_USER}"
+fi
+
+TARGET_GROUP="$(id -gn "${TARGET_USER}")"
+TARGET_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6)"
+AUTHORIZED_KEYS="${TARGET_HOME}/.ssh/authorized_keys"
+install -d -m 700 -o "${TARGET_USER}" -g "${TARGET_GROUP}" "${TARGET_HOME}/.ssh"
+touch "${AUTHORIZED_KEYS}"
+if ! grep -qxF "${PUBLIC_KEY}" "${AUTHORIZED_KEYS}"; then
+  printf '%s\n' "${PUBLIC_KEY}" >> "${AUTHORIZED_KEYS}"
+fi
+chown "${TARGET_USER}:${TARGET_GROUP}" "${AUTHORIZED_KEYS}"
+chmod 600 "${AUTHORIZED_KEYS}"
+echo "Groups and SSH key updated for '${TARGET_USER}'."
 REMOTE
 
 echo ""
-echo "Done. Next: bash bootstrap/server/05_sudoers.sh"
+echo "Done. Next: SSH_USER=root bash bootstrap/server/05_sudoers.sh"

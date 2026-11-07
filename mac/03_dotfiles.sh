@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # --- load .env if present (tokens, secrets) ---
-for ENV_FILE in "${SCRIPT_DIR}/.env" "${REPO_ROOT}/.env"; do
+for ENV_FILE in "${HOME}/.env" "${SCRIPT_DIR}/.env" "${REPO_ROOT}/.env"; do
   if [ -f "$ENV_FILE" ]; then
     echo "Loading $ENV_FILE ..."
     set -o allexport
@@ -33,9 +33,11 @@ if [ -n "$GH_BIN" ] && [ -x "$GH_BIN" ]; then
   elif [ -n "${GH_TOKEN:-}" ]; then
     echo "Authenticating gh via GH_TOKEN..."
     echo "$GH_TOKEN" | "$GH_BIN" auth login --with-token
-  else
+  elif [ -t 0 ]; then
     echo "Logging into GitHub (interactive)..."
     "$GH_BIN" auth login --hostname github.com --git-protocol https
+  else
+    echo "No terminal and no GH_TOKEN: skipping GitHub login. Run 'gh auth login' later."
   fi
 else
   echo "gh CLI not found, skipping authentication."
